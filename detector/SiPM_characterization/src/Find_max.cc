@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "../include/AnUtil.h"
+#include "../../../include/AnUtil.h"
 
 void Find_peaks(const std::string file_name, const std::string histogram_name,
                 int n_expected_peaks, int fit_width) {
