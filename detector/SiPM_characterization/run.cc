@@ -4,3 +4,20 @@
   the analysis
   TO DO
 */
+#include <RtypesCore.h>
+
+#include <string>
+
+#include "TROOT.h"
+#include "TSystem.h"
+
+void run() {
+  // load usefull libraries
+  std::string lib_path     = "./../../lib/";
+  std::string include_path = "./../../include/";
+
+  gROOT->ProcessLine(".L ./../../src/AnUtil.cc");
+
+  // load macros for this analysis
+  gROOT->ProcessLine(".L ./src/Find_max.cc");
+}
