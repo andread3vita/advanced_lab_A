@@ -22,5 +22,6 @@ void run() {
 
   // load macros for this analysis
   gROOT->ProcessLine(".L ./src/Find_max.cc");
-  gROOT->ProcessLine(".L ./src/ReadTree.C");
+  // gROOT->ProcessLine(".L ./src/ReadTree.C");
+  gROOT->ProcessLine(".L ./src/dark_counts_fit.cc");
 }
