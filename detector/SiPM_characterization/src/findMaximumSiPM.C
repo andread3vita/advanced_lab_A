@@ -15,8 +15,8 @@
 
 #include <stdint.h>
 
-#include "Event.cc"
-#include "InfoAcq.cc"
+#include "../Event.cc"
+#include "../InfoAcq.cc"
 #include "TCanvas.h"
 #include "TFile.h"
 #include "TGraph.h"
@@ -29,7 +29,7 @@ float adc_to_mv(int16_t raw, int16_t rangeIndex, int16_t maxADCValue) {
   return (raw * inputRanges[rangeIndex]) * 1. / maxADCValue;
 }
 
-enum { chA, chB };
+//enum { chA, chB };
 void ReadTree(const char *fileName, bool negative, int channel = chB,
               Long64_t nEvtMax = -1) {
   // dichiaro le struct
@@ -73,7 +73,6 @@ void ReadTree(const char *fileName, bool negative, int channel = chB,
 
   if (chSet.enabled == false) {
     cout << " channel " << channel << " not enabled, stopping" << endl;
-    break;
   }
   // imposto i branches per gli eventi
   sample0 = new short[sampSet.samplesStoredPerEvent];
@@ -228,9 +227,9 @@ int findMaximumSiPM(string filename1, string filename2,
   f->SetNpx(1000);
 
   f->SetParNames("offset", "gain", "mu", "norm");
-  float gain = t.GetPositionX()[0] - t.GetPositionX()[1];
+  gain = t.GetPositionX()[0] - t.GetPositionX()[1];
   if (polarity == negative) gain = -gain;
-  float offset = t.GetPositionX()[0];
+  offset = t.GetPositionX()[0];
   float mu     = t.GetPositionY()[1] / t.GetPositionY()[0];
   if (mu > 1) mu = 1;
   float norm = hMax->Integral("width");

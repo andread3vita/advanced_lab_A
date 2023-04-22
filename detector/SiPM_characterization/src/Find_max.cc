@@ -29,7 +29,7 @@ void Find_peaks(const std::string file_name, const std::string histogram_name,
   TFile* file = TFile::Open(file_name.c_str());
 
   // Read the histogram from the file
-  TH1F* histogram = dynamic_cast<TH1F*>(file->Get("histogram"));
+  TH1F* histogram = dynamic_cast<TH1F*>(file->Get(histogram_name.c_str()));
 
   // Create a TSpectrum object to find peaks
   TSpectrum* spectrum = new TSpectrum(n_expected_peaks);
