@@ -5,7 +5,7 @@
  *      Author: carlo
  */
 
-#include "Event.h"
+#include "./../include/Event.h"
 #include <iostream>
 
 using namespace std;

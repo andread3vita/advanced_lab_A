@@ -17,7 +17,10 @@ void run() {
   std::string include_path = "./../../include/";
 
   gROOT->ProcessLine(".L ./../../src/AnUtil.cc");
+  gROOT->ProcessLine(".L ./../../src/Event.cc");
+  gROOT->ProcessLine(".L ./../../src/InfoAcq.cc");
 
   // load macros for this analysis
   gROOT->ProcessLine(".L ./src/Find_max.cc");
+  gROOT->ProcessLine(".L ./src/ReadTree.C");
 }
