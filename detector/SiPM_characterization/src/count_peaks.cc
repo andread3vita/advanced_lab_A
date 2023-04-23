@@ -23,7 +23,7 @@ int Smooth(int n = 3) {
 
   TSpectrum *s = new TSpectrum();
 
-  TH1F *smooth = new TH1F("smooth", "smooth 4 iterations", nbins, xmin, xmax);
+  TH1F *smooth = new TH1F("smooth", "smooth 7 iterations", nbins, xmin, xmax);
   smooth->SetLineColor(kRed);
 
   s->SmoothMarkov(source, nbins, n);  // 3, 7, 10

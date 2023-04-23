@@ -22,6 +22,8 @@ class AnUtil {
   AnUtil();
   ~AnUtil();
 
+  static void ProgressBarr(float progress, int present_bar, int total_bars);
+
   // template functions must be declared and defined in the same file
   // put all of them below here
   template <class T>

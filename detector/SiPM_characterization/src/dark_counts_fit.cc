@@ -1,6 +1,7 @@
 // Copyright 2023 nicolò salimbeni andrea de vita
 #include <TSpectrum.h>
 #include <TVectorDfwd.h>
+#include <TVirtualPad.h>
 #include <fcntl.h>
 
 #include <cmath>
@@ -8,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "./../../../include/AnUtil.h"
 #include "./../../../include/Event.h"
 #include "./../../../include/InfoAcq.h"
 #include "TCanvas.h"
@@ -46,7 +48,7 @@ std::vector<std::string> list_files(const char *dirname = "C:/root/folder/",
 TH1F                    *GetEvent(TFile *input_file, int i, int channel = chB);
 int                      GetNEvents(TFile *input_file);
 TH1F                    *SmoothHistogram(TH1F *h, int n);
-int GetNPeaks(TH1F *h, Double_t sigma = 2, Option_t *opt = "",
+int GetNPeaks(TH1F *h, Double_t sigma = 2, Option_t *opt = "nodraw",
               Double_t tr = 0.01);
 
 int  supress_stdout();
@@ -103,12 +105,21 @@ void DarkCountsAnalysis(const char *dirname = "./data/counts_A/",
   // loop over the files
   for (int j = 0; j < files_names.size(); j++) {
     // loop over the events inside this file
-    TFile *root_file     = TFile::Open(files_names[j].c_str());
-    int    number_events = GetNEvents(root_file);
-    for (int i = 0; i < 5; i++) {
-      TH1F *h_chA = GetEvent(root_file, i, chA);
-      TH1F *h_chB = GetEvent(root_file, i, chB);
 
+    TFile *root_file     = TFile::Open((dirname + files_names[j]).c_str());
+    int    number_events = GetNEvents(root_file);
+    std::cout << "Analysing: " << files_names[j] << std::endl;
+    for (int i = 0; i < number_events; i++) {
+      // progress bar
+      if (!(i % (number_events / 100)) or i == (number_events - 1)) {
+        float progress = i * 1.0 / (number_events - 1);
+        AnUtil::ProgressBarr(progress, j + 1, files_names.size());
+      }
+
+      TH1F *h_chA = (TH1F *)GetEvent(root_file, i, chA)->Clone("h_chA");
+      delete (TH1F *)gDirectory->Get("Event Plot");
+      TH1F *h_chB = (TH1F *)GetEvent(root_file, i, chB)->Clone("h_chB");
+      delete (TH1F *)gDirectory->Get("Event Plot");
       // find the time windows in each event in micro seconds
       double x_min_A       = h_chA->GetXaxis()->GetXmin();  // in ns
       double x_max_A       = h_chA->GetXaxis()->GetXmax();  // in ns
@@ -124,13 +135,32 @@ void DarkCountsAnalysis(const char *dirname = "./data/counts_A/",
 
       // smooth histograms
       // 3 iterations for our counts, 2 4 for algorithm error evaluation
-      TH1F *h_chA_smooth      = SmoothHistogram(h_chA, 3);
-      TH1F *h_chA_smooth_up   = SmoothHistogram(h_chA, 4);
-      TH1F *h_chA_smooth_down = SmoothHistogram(h_chA, 2);
+      int   iter_noise      = 4;
+      int   iter_noise_up   = iter_noise + 1;
+      int   iter_noise_down = iter_noise - 1;
+      int   iter            = 7;
+      int   iter_up         = iter + 1;
+      int   iter_down       = iter - 1;
+      TH1F *h_chA_smooth =
+          (TH1F *)SmoothHistogram(h_chA, iter)->Clone("h_chA_smooth");
 
-      TH1F *h_chB_smooth      = SmoothHistogram(h_chB, 3);
-      TH1F *h_chB_smooth_up   = SmoothHistogram(h_chA, 4);
-      TH1F *h_chB_smooth_down = SmoothHistogram(h_chA, 2);
+      delete (TH1F *)gDirectory->Get("smooth");
+      TH1F *h_chA_smooth_up =
+          (TH1F *)SmoothHistogram(h_chA, iter_up)->Clone("h_chA_smooth_up");
+      delete (TH1F *)gDirectory->Get("smooth");
+      TH1F *h_chA_smooth_down =
+          (TH1F *)SmoothHistogram(h_chA, iter_down)->Clone("h_chA_smooth_down");
+      delete (TH1F *)gDirectory->Get("smooth");
+
+      TH1F *h_chB_smooth =
+          (TH1F *)SmoothHistogram(h_chB, iter)->Clone("h_chB_smooth");
+      delete (TH1F *)gDirectory->Get("smooth");
+      TH1F *h_chB_smooth_up =
+          (TH1F *)SmoothHistogram(h_chA, iter_up)->Clone("h_chB_smooth_up");
+      delete (TH1F *)gDirectory->Get("smooth");
+      TH1F *h_chB_smooth_down =
+          (TH1F *)SmoothHistogram(h_chA, iter_down)->Clone("h_chB_smooth_down");
+      delete (TH1F *)gDirectory->Get("smooth");
 
       // count the dark events and add the value in the vectors
       int n_chA      = GetNPeaks(h_chA_smooth);
@@ -140,6 +170,16 @@ void DarkCountsAnalysis(const char *dirname = "./data/counts_A/",
       int n_chB      = GetNPeaks(h_chB_smooth);
       int n_chB_up   = GetNPeaks(h_chB_smooth_up);
       int n_chB_down = GetNPeaks(h_chB_smooth_down);
+
+      // delate histograms
+      delete h_chA;
+      delete h_chB;
+      delete h_chA_smooth;
+      delete h_chA_smooth_up;
+      delete h_chA_smooth_down;
+      delete h_chB_smooth;
+      delete h_chB_smooth_up;
+      delete h_chB_smooth_down;
 
       counts_A[j] += (n_chA / time_window_A) / number_events;
       counts_B[j] += (n_chB / time_window_B) / number_events;
@@ -153,6 +193,7 @@ void DarkCountsAnalysis(const char *dirname = "./data/counts_A/",
       counts_A_down[j] += (n_chA_down / time_window_A) / number_events;
       counts_B_down[j] += (n_chB_down / time_window_B) / number_events;
     }
+    std::cout << std::endl;
     // now the position j of vectors is completed
     // we have to obtain the proper error for out counts
     err_A_algorithm[j] =
@@ -160,30 +201,49 @@ void DarkCountsAnalysis(const char *dirname = "./data/counts_A/",
     err_B_algorithm[j] =
         std::abs(counts_B_up[j] - counts_B_down[j]) / std::sqrt(12);
 
-    sqr_A_gaus[j] = std::sqrt(
-        std::abs(sqr_A_gaus[j] / number_events - pow(counts_A[j], 2)));
-    sqr_B_gaus[j] = std::sqrt(
-        std::abs(sqr_B_gaus[j] / number_events - pow(counts_B[j], 2)));
+    sqr_A_gaus[j] = std::sqrt(std::abs(sqr_A_gaus[j] / number_events -
+                                       pow(counts_A[j], 2))) /
+                    std::sqrt(number_events);
+    sqr_B_gaus[j] = std::sqrt(std::abs(sqr_B_gaus[j] / number_events -
+                                       pow(counts_B[j], 2))) /
+                    std::sqrt(number_events);
 
     err_A[j] =
         std::sqrt(std::pow(sqr_A_gaus[j], 2) + std::pow(err_A_algorithm[j], 2));
     err_B[j] =
         std::sqrt(std::pow(sqr_B_gaus[j], 2) + std::pow(err_B_algorithm[j], 2));
+
+    // close the TFile
+    root_file->Close();
   }
 
   // print the graps
   TGraphErrors *g_A =
       new TGraphErrors(voltages, counts_A, voltages_error, err_A);
+  g_A->SetNameTitle("g_A", "left SiPM");
+  g_A->SetMarkerStyle(20);
+  g_A->SetMarkerSize(1.1);
+  g_A->SetMarkerColor(kBlue);
+  g_A->GetXaxis()->SetTitle("applied voltage [V]");
+  g_A->GetYaxis()->SetTitle("dark counts / #mus");
 
   TGraphErrors *g_B =
       new TGraphErrors(voltages, counts_B, voltages_error, err_B);
+  g_B->SetNameTitle("g_B", "right SiPM");
+  g_B->SetMarkerStyle(20);
+  g_B->SetMarkerSize(1.1);
+  g_B->SetMarkerColor(kBlue);
+  g_B->GetXaxis()->SetTitle("applied voltage [V]");
+  g_B->GetYaxis()->SetTitle("dark counts / #mus");
 
   TCanvas *c = new TCanvas("c", "c", 1600, 680);
   c->Divide(2, 1);
   c->cd(1);
+  gPad->SetGrid();
   g_A->Draw("AP");
 
   c->cd(2);
+  gPad->SetGrid();
   g_B->Draw("AP");
   return;
 }
@@ -250,16 +310,11 @@ TH1F *GetEvent(TFile *input_file, int i, int channel) {
   unsigned long long elapsedTime;
   unsigned long long waveformStored;
 
-  // controllo a schermo la struttura del file
-  input_file->Print();
-
   // leggo i trees
   TTree *treeCh   = reinterpret_cast<TTree *>(input_file->Get("Channels"));
   TTree *treeSamp = reinterpret_cast<TTree *>(input_file->Get("SampSets"));
   TTree *treeEvt  = reinterpret_cast<TTree *>(input_file->Get("Event"));
   TTree *treeRTI  = reinterpret_cast<TTree *>(input_file->Get("RTI"));
-  // TFile->Get() restituisce un oggetto generico che va
-  // convertito esplicitamente anteponendo (TTree*)
 
   // prelevo i branch con le info e li associo alle struct
   treeCh->SetBranchAddress("Ch1", &chSet1.enabled);
@@ -319,12 +374,8 @@ TH1F *GetEvent(TFile *input_file, int i, int channel) {
         jj, adc_to_mv(sample[jj], chSet.range, sampSet.max_adc_value));
 
   // Grafici
-  TCanvas *c0 = new TCanvas("c0");
-
-  c0->cd(3);
   signal->SetXTitle("Instant (ns)");
   signal->SetYTitle("Amplitude (mV)");
-  signal->Draw();
 
   // reactivate all the couts
   std::cout.clear();
