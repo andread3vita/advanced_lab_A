@@ -2,7 +2,7 @@
 #include "TH1F.h"
 #include "TROOT.h"
 #include "TSpectrum.h"
-void Smooth() {
+int Smooth(int n = 3) {
   TFile *f = new TFile("./../test_peaks.root");
   TH1F  *h = reinterpret_cast<TH1F *>(f->Get("h"));
 
@@ -23,13 +23,14 @@ void Smooth() {
 
   TSpectrum *s = new TSpectrum();
 
-  TH1F *smooth = new TH1F("smooth", "smooth 10 iterations", nbins, xmin, xmax);
+  TH1F *smooth = new TH1F("smooth", "smooth 4 iterations", nbins, xmin, xmax);
   smooth->SetLineColor(kRed);
 
-  s->SmoothMarkov(source, nbins, 10);  // 3, 7, 10
+  s->SmoothMarkov(source, nbins, n);  // 3, 7, 10
   for (int i = 0; i < nbins; i++) smooth->SetBinContent(i, source[i]);
   smooth->Draw("L SAME");
 
-  TSpectrum *sp = new TSpectrum();
-  sp->Search(smooth, 2, "", 0.01);
+  TSpectrum *sp     = new TSpectrum();
+  int        counts = sp->Search(smooth, 2, "", 0.01);
+  return counts;
 }
