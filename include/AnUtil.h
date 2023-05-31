@@ -77,6 +77,32 @@ class AnUtil {
     // pay attenction to the n-1 at the denominator
     return std::sqrt(sum / (n - 1));
   }
+
+  template <class T>
+  static Double_t FindMax(const T& v, int n) {
+    Double_t max = -10e10;
+    for (int i = 0; i < n; i++) {
+      Double_t tmp = v[i];
+      if (tmp > max) {
+        max = tmp;
+      }
+    }
+
+    return max;
+  }
+
+  template <class T>
+  static Double_t FindMin(const T& v, int n) {
+    Double_t min = 10e10;
+    for (int i = 0; i < n; i++) {
+      Double_t tmp = v[i];
+      if (tmp < min) {
+        min = tmp;
+      }
+    }
+
+    return min;
+  }
 };
 
 #endif
