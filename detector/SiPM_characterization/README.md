@@ -28,7 +28,7 @@ For the dark count analysis a dedicated script was written: "dark_count_analysis
 Here we need to specify a few things. Taking into account that our SiPMs are not the same, to evaluate the dark counts we have to work with different times and voltages configurations. As a consequence we can't use the same parameters of the script for all the detectors. Below we write the ones we used for each detector:
 
 SiPM A (SX, DX was broken):
-- iterations: 7, 7
+- iterations: 5, 5
 - threshold: 0.001
 - if condition with 3 bins for manual search
 
