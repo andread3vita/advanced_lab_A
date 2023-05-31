@@ -22,5 +22,5 @@ void run() {
   gROOT->ProcessLine((".L " + src_path + "InfoAcq.cc").c_str());
 
   // load macros for this analysis
-  gROOT->ProcessLine(".L ./src/dark_counts_fit.cc");
+  gROOT->ProcessLine(".L ./src/dark_counts_analysis.cc");
 }

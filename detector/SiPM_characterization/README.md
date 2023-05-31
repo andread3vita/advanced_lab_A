@@ -12,6 +12,37 @@ During recovery, the GM-APD cannot detect other photons. For this reason, a GM-A
 
 ##  SiPM characterization
 
+### Dark counts analysis
+In our Silicon detectors (SiPM) some electrons may be excited by thermal excitations. These electrons start a signal which is called dark signal. In out experiment to identify mouns  we employ the coincidence between 2 scintillators, and each of them is attached to 2 SiPM.
+
+If we quantify the rate of this noise we can quantify the rate of chance coincidences, and we can have an idea of the signal to noise ratio of our histograms.
+
+For the dark count analysis a dedicated script was written: "dark_count_analysis.cc". Let's see quickly what it does.
+- it selects the file with the histograms in the path like: /data/counts_A/count_A_295.root
+- it loops over the events
+- each histogram is smoothed using the SmoothMarkov root function, which depends on an integer >= 1 provided by the user (good values between 3 and 7)
+- then it manually counts the peaks over a certain threshold (expressed as a fraction of the highest peak)
+- using a poissonian statistic it computes the expected value
+- every point is added in a graph (voltage,dark counts) with a poissonian error + error of the peak detection
+
+Here we need to specify a few things. Taking into account that our SiPMs are not the same, to evaluate the dark counts we have to work with different times and voltages configurations. As a consequence we can't use the same parameters of the script for all the detectors. Below we write the ones we used for each detector:
+
+SiPM A (SX, DX was broken):
+- iterations: 7, 7
+- threshold: 0.001
+- if condition with 3 bins for manual search
+
+SiPM B (SX, DX)
+- iterations: 5,5
+- threshold: 0.001
+- if condition with 2 bins for manual search
+
+SiPM C (SX, DX)
+- iterations: 5,5
+- threshold: 0.001
+- if condition with 3 bins for manual search
+
+
 ## References
 * https://www.first-sensor.com/cms/upload/appnotes/AN_SiPM_Introduction_E.pdf
 * https://www.ll.mit.edu/sites/default/files/publication/doc/geiger-mode-avalanche-photodiodes-three-aull-ja-7893.pdf

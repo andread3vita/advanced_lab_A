@@ -37,6 +37,8 @@
  -SmoothHistogram: return a smooth histogram without noise fluctuations
   using the markov algorithm
  -GetNPeaks: count the number of peaks in a histogram
+ -GetNPeaksManual: like the previous but instead of TSpectrum it's done manually
+
 
  -supress_stdout: suppres printf outputs
  -resum_stdout: resume printf outputs
@@ -50,7 +52,7 @@ int                      GetNEvents(TFile *input_file);
 TH1F                    *SmoothHistogram(TH1F *h, int n);
 int GetNPeaks(TH1F *h, Double_t tr = 0.01, Double_t sigma = 2,
               Option_t *opt = "nodraw");
-int GetNPeaksManual(TH1F *h, Double_t tr);
+int GetNPeaksManual(TH1F *h, Double_t tr = 0.01, int n_search = 3);
 
 int  supress_stdout();
 void resume_stdout(int fd);
@@ -59,11 +61,15 @@ void resume_stdout(int fd);
 
 void DarkCountsAnalysis(int n_A, int n_B,
                         const char *dirname = "./data/counts_A/",
-                        double tr = 0.01, bool manual = false) {
-  // Perform he analysis, the first due arguments of the functions are
+                        double tr = 0.01, bool manual = true,
+                        int n_search = 3) {
+  // Perform the analysis, the first due arguments of the functions are
   // parameters for the smoothing of the instograms. Go from 1 (almost nothing)
   // to 10 or plus (everything is delated). Then the other parameter is the path
-  // in which the files are located find the files in the proper directory
+  // in which the files are located find the files in the proper directory,
+  // the threshold for the peak identification, a bool which ask if to use the
+  // manual or the TSpectrum peak search, the number of bin for manual search if
+  // needed
   std::vector<std::string> files_names = list_files(dirname, ".root");
   std::cout << "Loaded files:" << std::endl;
   for (auto file_name : files_names) {
@@ -188,12 +194,12 @@ void DarkCountsAnalysis(int n_A, int n_B,
       int n_chB_down;
 
       if (manual) {
-        n_chA      = GetNPeaksManual(h_chA_smooth, tr);
-        n_chA_up   = GetNPeaksManual(h_chA_smooth_up, tr);
-        n_chA_down = GetNPeaksManual(h_chA_smooth_down, tr);
-        n_chB      = GetNPeaksManual(h_chB_smooth, tr);
-        n_chB_up   = GetNPeaksManual(h_chB_smooth_up, tr);
-        n_chB_down = GetNPeaksManual(h_chB_smooth_down, tr);
+        n_chA      = GetNPeaksManual(h_chA_smooth, tr, n_search);
+        n_chA_up   = GetNPeaksManual(h_chA_smooth_up, tr, n_search);
+        n_chA_down = GetNPeaksManual(h_chA_smooth_down, tr, n_search);
+        n_chB      = GetNPeaksManual(h_chB_smooth, tr, n_search);
+        n_chB_up   = GetNPeaksManual(h_chB_smooth_up, tr, n_search);
+        n_chB_down = GetNPeaksManual(h_chB_smooth_down, tr, n_search);
       } else if (!manual) {
         n_chA      = GetNPeaks(h_chA_smooth, tr);
         n_chA_up   = GetNPeaks(h_chA_smooth_up, tr);
@@ -472,21 +478,47 @@ int GetNPeaks(TH1F *h, Double_t tr, Double_t sigma, Option_t *opt) {
   return counts;
 }
 
-int GetNPeaksManual(TH1F *h, Double_t tr) {
+bool IsPyramid(const std::vector<double> &v_sx, double max,
+               const std::vector<double> &v_dx) {
+  if (v_sx.size() != v_dx.size()) {
+    return false;  // Left and right sides should have the same size
+  }
+
+  int size = v_sx.size();
+
+  for (int i = 0; i < size - 1; i++) {
+    if (v_sx[i] >= max || v_dx[i] >= max) {
+      return false;  // Values on the sides should be smaller than the peak
+    }
+
+    if (v_sx[i + 1] <= v_sx[i] || v_dx[i] <= v_dx[i + 1]) {
+      return false;  // Values on the sides should be in ascending and
+                     // descending order respectively
+    }
+  }
+
+  return true;  // All conditions met, it is a pyramid
+}
+int GetNPeaksManual(TH1F *h, Double_t tr, int n_search) {
+  // This function with the help of the IsPyramid method looks for piramid
+  // shapes in the histogram and count them. The it applys a threshold expressed
+  // as a fraction of the highest peak found.
   std::vector<Float_t> v;
 
   // start loop over histogram
-  for (int i = 4; i < h->GetNbinsX() - 4; i++) {
-    Float_t i3, i2, i1, max, j1, j2, j3;
-    i3  = h->GetBinContent(i - 3);
-    i2  = h->GetBinContent(i - 2);
-    i1  = h->GetBinContent(i - 1);
-    max = h->GetBinContent(i);
-    j1  = h->GetBinContent(i + 1);
-    j2  = h->GetBinContent(i + 2);
-    j3  = h->GetBinContent(i + 3);
+  for (int i = n_search; i < h->GetNbinsX() - n_search; i++) {
+    // fill the vectors for the piramid
+    std::vector<double> v_sx;
+    std::vector<double> v_dx;
+    for (int j = n_search; j >= 1; j--) {
+      v_sx.push_back(h->GetBinContent(i - j));
+    }
+    for (int j = 1; j <= n_search; j++) {
+      v_dx.push_back(h->GetBinContent(i + j));
+    }
 
-    if (i2 < i1 && i1 < max && j1 < max && j2 < j1) {
+    double max = h->GetBinContent(i);
+    if (IsPyramid(v_sx, max, v_dx)) {
       v.push_back(max);
     }
   }
@@ -501,6 +533,5 @@ int GetNPeaksManual(TH1F *h, Double_t tr) {
       count++;
     }
   }
-
   return count;
 }
