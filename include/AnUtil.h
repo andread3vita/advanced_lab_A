@@ -8,6 +8,7 @@
 */
 
 #include <RtypesCore.h>
+#include <TVectorDfwd.h>
 
 #include <cmath>
 #include <string>
@@ -21,7 +22,8 @@ class AnUtil {
  public:
   AnUtil();
   ~AnUtil();
-
+  
+  static TVectorD LoadVector(const std::string& filename, size_t columnNumber);
   static void ProgressBarr(float progress, int present_bar, int total_bars);
 
   // template functions must be declared and defined in the same file
