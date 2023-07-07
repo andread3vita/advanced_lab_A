@@ -8,6 +8,7 @@
 */
 
 #include <RtypesCore.h>
+#include <TVectorDfwd.h>
 
 #include <cmath>
 #include <string>
@@ -21,6 +22,9 @@ class AnUtil {
  public:
   AnUtil();
   ~AnUtil();
+  
+  static TVectorD LoadVector(const std::string& filename, size_t columnNumber);
+  static void ProgressBarr(float progress, int present_bar, int total_bars);
 
   // template functions must be declared and defined in the same file
   // put all of them below here
@@ -74,6 +78,32 @@ class AnUtil {
 
     // pay attenction to the n-1 at the denominator
     return std::sqrt(sum / (n - 1));
+  }
+
+  template <class T>
+  static Double_t FindMax(const T& v, int n) {
+    Double_t max = -10e10;
+    for (int i = 0; i < n; i++) {
+      Double_t tmp = v[i];
+      if (tmp > max) {
+        max = tmp;
+      }
+    }
+
+    return max;
+  }
+
+  template <class T>
+  static Double_t FindMin(const T& v, int n) {
+    Double_t min = 10e10;
+    for (int i = 0; i < n; i++) {
+      Double_t tmp = v[i];
+      if (tmp < min) {
+        min = tmp;
+      }
+    }
+
+    return min;
   }
 };
 
