@@ -1,0 +1,9 @@
+# In this file we write the values for the calibration of arietta.
+# Every script that needs them will load them from here.
+
+# The calibration is made with the function: time = m*(arietta units) + q
+
+m: 14.896917
+m_err: 0.108607
+q: 7.378230
+q_err: 4.397700
