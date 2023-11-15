@@ -25,5 +25,5 @@ void run()
   gROOT->ProcessLine((".L " + src_path + "GrUtil.cc").c_str());
 
   // load macros for this analysis
-  gROOT->ProcessLine(".L ./muon_lifetime.cc");
+  gROOT->ProcessLine(".L ./src/muon_lifetime.cc");
 }

@@ -1,5 +1,9 @@
 # here we write the value obtained for the muon lifetime.
 # If a script needs it, it'll load it from here.
 
-life_time: 2222.144004
-life_time_error: 14.891237
+life_time: 2194.712166
+life_time_error: 24.414403
+normalization: 4207.411795
+normalization_error: 82.744449
+constant: 6.773995
+constant_error: 1.208279
