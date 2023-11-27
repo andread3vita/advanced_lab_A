@@ -14,9 +14,9 @@
 void run()
 {
   // load usefull libraries
-  std::string lib_path     = "./../lib/";
-  std::string include_path = "./../include/";
-  std::string src_path     = "./../src/";
+  std::string lib_path     = "./../../../lib/";
+  std::string include_path = "./../../../include/";
+  std::string src_path     = "./../../../src/";
 
   gROOT->ProcessLine((".L " + src_path + "AnUtil.cc").c_str());
   gROOT->ProcessLine((".L " + src_path + "Event.cc").c_str());
