@@ -53,11 +53,12 @@ Double_t chi_sqr(Double_t *val, Double_t *par)
 
   Double_t sum = 0;
 
-  //  loop over all the bin in the histogram, but only in the range of the fit
-  double xMin = 2000;
-  double xMax = 16000;
-  // double xMin, xMax;
-  // f->GetRange(xMin, xMax);
+  //  loop over all the bin in   // double xMin = 2000;
+  // double xMax = 16000;the histogram, but only in the range of the fit
+  // double xMin = 2000;
+  // double xMax = 16000;
+  double xMin, xMax;
+  f->GetRange(xMin, xMax);
   int bin_min = h->FindBin(xMin);
   int bin_max = h->FindBin(xMax) - 1;
   for (int i = bin_min; i <= bin_max; i++)
@@ -96,7 +97,7 @@ void FitData(std::string filename, int bin = 75)
   }
 
   // fit
-  TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 16000);
+  f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 16000);
   f->SetParNames("constant", "normalization", "decay rate [ns]");
   f->SetParameter(2, 2200);
   f->SetParLimits(0, 0, 200);
