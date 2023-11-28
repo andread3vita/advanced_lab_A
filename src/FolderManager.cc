@@ -132,7 +132,7 @@ void FolderManager::LoadFolder(std::string path)
 {
   // This function load ONLY the files name, not the folders name,
   // contained in the folder in path "path" inside the object vector.
-  CheckIfLoaded();
+  loaded = true;
 
   pathToFolder = path;
   if (path[path.size() - 1] != '/')
