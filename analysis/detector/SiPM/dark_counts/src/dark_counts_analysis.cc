@@ -1,6 +1,5 @@
 // Copyright 2023 nicolò salimbeni andrea de vita
 #include <TSpectrum.h>
-#include <TVectorDfwd.h>
 #include <TVirtualPad.h>
 #include <fcntl.h>
 
@@ -9,9 +8,11 @@
 #include <string>
 #include <vector>
 
-#include "./../../../../include/AnUtil.h"
-#include "./../../../../include/Event.h"
-#include "./../../../../include/InfoAcq.h"
+#include "./../../../../../include/AnUtil.h"
+#include "./../../../../../include/Event.h"
+#include "./../../../../../include/FolderManager.h"
+#include "./../../../../../include/InfoAcq.h"
+#include "./../../../../../include/StateFile.h"
 #include "TCanvas.h"
 #include "TFile.h"
 #include "TGraphErrors.h"
@@ -286,6 +287,134 @@ void DarkCountsAnalysis(int n_A, int n_B, const char *dirname = "./data/counts_A
   g_A->Write();
   g_B->Write();
   c->Write();
+  return;
+}
+
+void DarkCountsVsTemperature(std::string SiPM_index, int n_A, int n_B, double threshold = 0.03, bool manual = true, int n_search = 3)
+{
+  /*
+    Arguments explanations:
+                            -SiPM_index: string used to idendify the SiPM "A", "B", "C"
+                            -n_A: parameter of the smooth alogrithm for left SiPM
+                            -n_B: parameter of the smooth alogrithm for right SiPM
+                            -threshold: parameter for the peak identification algorithm. A peak is accepted only if it is higher than threshold*(highest peak)
+                            -manual: a bool, if true peaks are searched with the GetNPeaksManual algorithm, if false with GetNPeaks algorithm
+                            -n_search: a parameter for the manual search algorithm
+    This function was written to study dark counts with and without the magnetic field.
+    The solenoid that generates the magnetic field heats up very much, this increases the
+    temperature of the SiPMs and consequently their darkcounts. Since it is difficult to
+    measure the temperature of SiPMs two data sets were taken, one without B and one with
+    B after some time (with the solenoid hot). This function is used to extract the
+    number of dark counts from these two datasets and see if it has changed significantly.
+    In the function when referring to the SiPM A is the left, B is the right.
+    The results are then written in the results_temperature.txt file in the main
+    directory.
+  */
+
+  // Get the files
+  FolderManager           *data_folder = new FolderManager("data/data_temperature/");
+  std::vector<std::string> data_files  = data_folder->GetListOfObjectsPath(SiPM_index + "_count");
+
+  StateFile *results = new StateFile("results_temperature.txt");
+
+  // Get the dark counts in the two files
+  for (int j = 0; j < data_files.size(); j++)
+  {
+    TVectorD total_time_A(data_files.size());
+    TVectorD total_time_B(data_files.size());
+    TVectorD counts_A(data_files.size());
+    TVectorD counts_B(data_files.size());
+    TVectorD error_A(data_files.size());
+    TVectorD error_B(data_files.size());
+
+    // get total number of counts
+    TFile *root_file = TFile::Open((data_files[j]).c_str());
+    // int    number_events = GetNEvents(root_file);
+    int number_events = 1000;
+    std::cout << "Analysing: " << data_files[j] << std::endl;
+    for (int i = 0; i < number_events; i++)
+    {
+
+      // progress bar
+      if (!(i % (number_events / 100)) || i == (number_events - 1))
+      {
+        float progress = i * 1.0 / (number_events - 1);
+        AnUtil::ProgressBarr(progress, j + 1, data_files.size());
+      }
+
+      TH1F *h_chA = (TH1F *)GetEvent(root_file, i, chA)->Clone("h_chA");
+      delete (TH1F *)gDirectory->Get("Event Plot");
+      TH1F *h_chB = (TH1F *)GetEvent(root_file, i, chB)->Clone("h_chB");
+      delete (TH1F *)gDirectory->Get("Event Plot");
+      // find the time windows in each event in micro seconds
+      double x_min_A       = h_chA->GetXaxis()->GetXmin(); // in ns
+      double x_max_A       = h_chA->GetXaxis()->GetXmax(); // in ns
+      double time_window_A = (x_max_A - x_min_A) / 1000;   // in micro sec
+      total_time_A[j] += time_window_A;
+
+      double x_min_B       = h_chB->GetXaxis()->GetXmin(); // in ns
+      double x_max_B       = h_chB->GetXaxis()->GetXmax(); // in ns
+      double time_window_B = (x_max_B - x_min_B) / 1000;   // in micro sec
+      total_time_B[j] += time_window_B;
+
+      // we look for max instead of min, it's easier
+      h_chA->Scale(-1, "nosw2");
+      h_chB->Scale(-1, "nosw2");
+
+      // smooth histograms
+      int iter_A = n_A;
+      int iter_B = n_B;
+
+      TH1F *h_chA_smooth = (TH1F *)SmoothHistogram(h_chA, iter_A)->Clone("h_chA_smooth");
+      delete (TH1F *)gDirectory->Get("smooth");
+
+      TH1F *h_chB_smooth = (TH1F *)SmoothHistogram(h_chB, iter_B)->Clone("h_chB_smooth");
+      delete (TH1F *)gDirectory->Get("smooth");
+
+      // count the dark events and add the value in the vectors
+      int n_chA;
+      int n_chB;
+
+      if (manual)
+      {
+        n_chA = GetNPeaksManual(h_chA_smooth, threshold, n_search);
+        n_chB = GetNPeaksManual(h_chB_smooth, threshold, n_search);
+      }
+      else if (!manual)
+      {
+        n_chA = GetNPeaks(h_chA_smooth, threshold);
+        n_chB = GetNPeaks(h_chB_smooth, threshold);
+      }
+
+      // delate histograms
+      delete h_chA;
+      delete h_chB;
+      delete h_chA_smooth;
+      delete h_chB_smooth;
+
+      counts_A[j] += n_chA;
+      counts_B[j] += n_chB;
+    }
+    std::cout << std::endl;
+
+    error_A[j] = std::sqrt(counts_A[j]);
+    error_B[j] = std::sqrt(counts_B[j]);
+
+    counts_A[j] = counts_A[j] / total_time_A[j];
+    counts_B[j] = counts_B[j] / total_time_B[j];
+
+    error_A[j] = error_A[j] / total_time_A[j];
+    error_B[j] = error_B[j] / total_time_B[j];
+
+    std::string name       = data_files[j].substr(data_files[j].find(SiPM_index), data_files[j].find(".root") - data_files[j].find(SiPM_index));
+    std::string result_str = "sx = (" + std::to_string(counts_A[j]) + " +- " + std::to_string(error_A[j]) + ") ";
+    result_str += "dx = (" + std::to_string(counts_B[j]) + " +- " + std::to_string(error_B[j]) + ") ";
+    results->UpdateValueOf(name, result_str);
+
+    std::cout << name << " " << counts_A[j] << " " << counts_B[j] << std::endl;
+    std::cout << std::endl;
+  }
+
   return;
 }
 

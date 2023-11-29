@@ -1,5 +1,5 @@
-#include "./../../../../include/Event.h"
-#include "./../../../../include/InfoAcq.h"
+#include "./../../../../../include/Event.h"
+#include "./../../../../../include/InfoAcq.h"
 #include "TCanvas.h"
 #include "TFile.h"
 #include "TH1.h"
@@ -7,52 +7,20 @@
 #include "TStyle.h"
 #include <iostream>
 
-float adc_to_mv(int16_t raw, int16_t rangeIndex, int16_t maxADCValue)
+int   supress_stdout();
+void  resume_stdout(int fd);
+float adc_to_mv(int16_t raw, int16_t rangeIndex, int16_t maxADCValue);
+TH1F *SmoothHistogram(TH1F *h, int n);
+int   GetNPeaksManual(TH1F *h, Double_t tr, int n_search);
+int   GetNPeaks(TH1F *h, Double_t tr, Double_t sigma, Option_t *opt);
+
+TH1F *PlotSingleTrigger(std::string path, int i, int channel, double threshold, int n_markov = 3)
 {
-  // function defined for GetEvent, I don't know what it does
-  uint16_t inputRanges[12] = {10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000};
+  TFile *input_file = TFile::Open(path.c_str());
 
-  return (raw * inputRanges[rangeIndex]) * 1. / maxADCValue;
-}
+  std::cout.setstate(std::ios_base::failbit);
+  int suppres_print = supress_stdout();
 
-TH1F *SmoothHistogram(TH1F *h, int n)
-{
-  /*
-  This function smooth an istogram h reducing the noise statistical
-  fluctuations.
-  It uses the markov algorithm in the TSpectrum class. The parameter n is
-  the number of iterations for the algorithm, the bigger it is the smoother
-  the histogram will be. If n is too large the output histogram does not
-  rapresent the inout histogram anymore, so be careful.
-  */
-  const Int_t nbins = h->GetNbinsX();
-  Double_t    xmin  = h->GetXaxis()->GetXmin();
-  Double_t    xmax  = h->GetXaxis()->GetXmax();
-  Double_t    source[nbins];
-
-  double b_width = h->GetBinWidth(1);
-  double min     = h->GetMinimum();
-  for (int i = 0; i < nbins; i++)
-  {
-    h->SetBinContent(i, h->GetBinContent(i) - min);
-  }
-  for (int i = 0; i < nbins; i++)
-    source[i] = h->GetBinContent(i);
-
-  TSpectrum *s = new TSpectrum();
-
-  TH1F *smooth = new TH1F("smooth", "smooth 4 iterations", nbins, xmin, xmax);
-  smooth->SetLineColor(kRed);
-
-  s->SmoothMarkov(source, nbins, n); // 3, 7, 10
-  for (int i = 0; i < nbins; i++)
-    smooth->SetBinContent(i, source[i]);
-
-  return smooth;
-}
-
-TH1F *PlotSingleTrigger(TFile *input_file, int i, int channel)
-{
   // diable all couts defined in the functions
   InfoAcq::chSettings       chSet1;
   InfoAcq::chSettings       chSet2;
@@ -123,6 +91,8 @@ TH1F *PlotSingleTrigger(TFile *input_file, int i, int channel)
   treeEvt->GetEntry(daVedere);
   evt->FillEvent(ID, triggerInstant, timeUnit, sample, channel);
 
+  std::cout.clear();
+  resume_stdout(suppres_print);
   TH1F *signal = new TH1F("Event Plot", "Event Plot", sampSet.samplesStoredPerEvent, -sampSet.preTrig * sampSet.timeIntervalNanoseconds, (sampSet.samplesStoredPerEvent - sampSet.preTrig) * sampSet.timeIntervalNanoseconds);
 
   for (int jj = 0; jj < sampSet.samplesStoredPerEvent; jj++)
@@ -141,12 +111,13 @@ TH1F *PlotSingleTrigger(TFile *input_file, int i, int channel)
   signal->SetStats(false);
   signal->SetLineWidth(2);
 
-  TCanvas *c_not_smooth = new TCanvas("c", "c", 1600, 1200);
-  c_not_smooth->cd();
+  TCanvas *c = new TCanvas("c", "c", 1000, 800);
+  c->Divide(1, 2);
+  c->cd(1);
   signal->Draw();
 
   // now print the smooth histogram
-  TH1F *h_smooth = SmoothHistogram(signal, 4);
+  TH1F *h_smooth = SmoothHistogram(signal, n_markov);
   h_smooth->SetXTitle("time [ns]");
   h_smooth->SetYTitle("Amplitude [mV]");
   h_smooth->SetTitle("Single trigger event after smooth algorithm");
@@ -158,9 +129,14 @@ TH1F *PlotSingleTrigger(TFile *input_file, int i, int channel)
   h_smooth->SetStats(false);
   h_smooth->SetLineWidth(2);
 
-  TCanvas *c_smooth = new TCanvas("c_smoot", "c_smooth", 1600, 1200);
-  c_smooth->cd();
+  c->cd(2);
   h_smooth->Draw();
+
+  // count numbers of peaks manually
+  int n_manual = GetNPeaksManual(h_smooth, threshold, 5);
+  std::cout << "detected peaks manually: " << n_manual << std::endl;
+  int n_root = GetNPeaks(h_smooth, 0.01, 3, "");
+  std::cout << "detected peaks bt root: " << n_root << std::endl;
 
   return signal;
 }
