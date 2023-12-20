@@ -1,7 +1,5 @@
 .DS_Store
-
 .vscode
-
+.gitattributes 
 ./analysis/detector/SiPM/gain/data/
-
 ./analysis/detector/SiPM/dark_counts/data/
