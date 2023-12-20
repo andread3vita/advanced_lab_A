@@ -1,1 +1,7 @@
 .DS_Store
+
+.vscode
+
+./analysis/detector/SiPM/gain/data/
+
+./analysis/detector/SiPM/dark_counts/data/
