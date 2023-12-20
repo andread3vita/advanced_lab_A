@@ -279,6 +279,9 @@ void biExponentialFit(const char *datafile)
     // Open Arietta calibration parameters file
     StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
 
+    // Open data file
+    std::ifstream infile(datafile);
+
     // Initialize ROOT canvas
     auto *c1 = new TCanvas();
 
@@ -344,7 +347,7 @@ void createFitFile(const char *datafile)
     infile.close();
 
     // Open a file to store fit results
-    std::ofstream resultFile("fitResult.txt");
+    std::ofstream resultFile("./../results/fitResult.txt");
 
     resultFile << "Range\tTau\tFit_number\tSigma\tQuantileProb" << std::endl;
     // Loop through different fit configurations
