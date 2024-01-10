@@ -79,7 +79,7 @@ void FitData(std::string filename, int bin = 75)
   The results of the fit are then saved into the result.txt statefile, together with a plot in .pdf
   */
 
-  StateFile *calibration_parameters = new StateFile("./../cal_arietta/results.txt");
+  StateFile *calibration_parameters = new StateFile("./../../detector/arietta/results.txt");
 
   TCanvas *can = new TCanvas("c", "c", 900, 600);
   can->SetGrid();
@@ -98,7 +98,7 @@ void FitData(std::string filename, int bin = 75)
 
   // fit
   f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 16000);
-  f->SetParNames("constant", "normalization", "decay rate [ns]");
+  f->SetParNames("c", "N", "#tau [ns]");
   f->SetParameter(2, 2200);
   f->SetParLimits(0, 0, 200);
   h->Fit(f, "RM");
