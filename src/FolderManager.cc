@@ -1,7 +1,9 @@
 #include "./../include/FolderManager.h"
+#include "./../include/AnUtil.h"
 #include <cstdlib>
 #include <dirent.h>
 #include <iostream>
+#include <sstream>
 #include <string>
 FolderManager::FolderManager(){};
 
@@ -130,38 +132,34 @@ void FolderManager::Print() const
 
 void FolderManager::LoadFolder(std::string path)
 {
-  // This function load ONLY the files name, not the folders name,
-  // contained in the folder in path "path" inside the object vector.
+  // function to load all objects name in a vector called objects, files and folders
+
   loaded = true;
 
-  pathToFolder = path;
-  if (path[path.size() - 1] != '/')
+  // check if it ands in /, otherwise add it
+  if (path[path.size() - 1] != std::string("/"))
   {
     path.append("/");
   }
-  objects.clear();
+  pathToFolder = path;
 
-  DIR *dir = opendir(path.c_str());
-
-  if (dir)
-  {
-    struct dirent *entry;
-
-    // Read directory entries
-    while ((entry = readdir(dir)) != nullptr)
-    {
-      if (entry->d_type == DT_REG)
-      { // Check if it's a regular file
-        objects.push_back(entry->d_name);
-      }
-    }
-
-    closedir(dir);
-  }
-  else
+  std::string all_files = AnUtil::exec_in_terminal(("ls " + path).c_str());
+  if (all_files == ("ls: cannot access '" + path + "': No such file or directory"))
   {
     std::cerr << "ERROR opening directory: " << path << ", abort." << std::endl;
     exit(EXIT_FAILURE);
+  }
+
+  std::istringstream iss(all_files);
+  std::string        line;
+
+  while (std::getline(iss, line))
+  {
+    // Ignore empty lines
+    if (!line.empty())
+    {
+      objects.push_back(line);
+    }
   }
 
   return;
