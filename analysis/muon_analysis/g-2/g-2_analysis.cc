@@ -41,6 +41,8 @@ void SpectrumPlot(int nbins = 75, double xmin = 0, double xmax = 18000)
   c_spectrum->cd();
   c_spectrum->SetGrid();
   spectrum->GetYaxis()->SetTitle(GrUtil::HLabel(spectrum, "ns", "counts").c_str());
+  spectrum->GetXaxis()->SetTitle("time [ns]");
+  spectrum->SetTitle("muon decay in B");
   spectrum->SetLineColor(kBlue);
   spectrum->SetLineWidth(2);
   GrUtil::SetCountDigits(spectrum);
