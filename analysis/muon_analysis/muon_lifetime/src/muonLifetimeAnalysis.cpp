@@ -37,7 +37,7 @@ using std::string;
 
  - biExponentialFit: it performs a fitting operation on the data histogram within the time range of 2000 to 15000 ns,
                      employing a negative exponential model. Subsequently, the obtained fit results serve as fixed
-                     parameters for a second fitting process conducted within the 200 to 2000 ns range. This second fit
+                     parameters for a second fitting process conducted within the 200 to 16000 ns range. This second fit
                      involves a combination of two exponentials, where one set of parameters is constrained based on the
                      outcomes of the previous fit, while the other set remains free.
                      The objective of this analysis is to investigate the initial segment of the histogram, aiming to
@@ -50,7 +50,7 @@ using std::string;
 */
 
 //////////// MAIN FUNCTION DECLARATIONS ///////////////////
-void summaryPlot(const char *datafile);
+void summaryPlot(const char *datafile = "../results/fitResult.txt");
 void residualsAnalysis(const char *datafile);
 void biExponentialFit(const char *datafile);
 
@@ -58,7 +58,7 @@ void biExponentialFit(const char *datafile);
 void createFitFile(const char *datafile);
 
 //////////// FUNCTION DEFINITIONS ///////////////////
-void summaryPlot(const char *resultFile)
+void summaryPlot(const char *resultFile = "../results/fitResult.txt")
 {
     /////////////////
     // IMPORT DATA //
@@ -308,17 +308,28 @@ void biExponentialFit(const char *datafile)
     histo->Fit(f, "RMN");
 
     // Define a combined function with fixed and free parameters for the second fit
-    TF1 *combF = new TF1("combF", "[0]+[1]*exp(-x/[2])+[3]*exp(-x/[4])", 200, 2000);
-    combF->FixParameter(2, f->GetParameter(2));
-    combF->SetParameter(3, f->GetParameter(1));
+    TF1 *combF = new TF1("combF", "[0]+[1]*exp(-x/[2])+[3]*exp(-x/[4])", 200, 15000);
 
-    // Set limits and initial values for the parameters
-    combF->SetParLimits(0, 0, 1000);
-    combF->SetParLimits(1, 0, 10000);
+    combF->SetParName(0, "Const");
+    combF->SetParName(1, "NormMuonExp");
+    combF->SetParName(2, "MuonLifetime");
+    combF->SetParName(3, "NormBkg");
+    combF->SetParName(4, "BkgTime");
+
+    combF->SetParameter(1, f->GetParameter(1));
+    combF->FixParameter(2, f->GetParameter(2));
+
+    // Set limits and initial values for background parameters
+    combF->SetParLimits(0, 0, 2000);
+    combF->SetParLimits(3, 0, 2000);
     combF->SetParameter(4, 1000);
 
     // Fit the histogram with the combined function
     histo->Fit(combF, "RM");
+    gStyle->SetOptFit(0111);
+
+    // Draw histogram
+    histo->Draw();
 }
 
 // ///////////////// TRASH /////////////////
@@ -338,6 +349,10 @@ void createFitFile(const char *datafile)
     // Retrieve calibration parameters
     double a = std::stod(calibration_parameters->ValueOf("m"));
     double b = std::stod(calibration_parameters->ValueOf("q"));
+
+    std::cout << "Fit is starting:" << std::endl;
+    std::cout << "Calibration parameters:\t"
+              << "m: " << a << "   q: " << b << std::endl;
 
     // Fill the histogram with calibrated data
     while (infile >> x)
@@ -393,6 +408,7 @@ void createFitFile(const char *datafile)
         // Print fit results to the result file
         Double_t xmin, xmax;
         f->GetRange(xmin, xmax);
+        std::cout << "\nFitting range: " << xmin << " - " << xmax << std::endl;
 
         resultFile << Form("%.0f-%.0f", xmin, xmax) << "\t";
         resultFile << f->GetParameter(2) << "\t";
@@ -403,4 +419,5 @@ void createFitFile(const char *datafile)
         // Clean up memory by deleting the fit function object
         delete f;
     }
+    resultFile.close();
 }
