@@ -1,0 +1,9 @@
+# counts each microsecond for our SiPM both left and right
+
+A_counts_noB: sx = (2.864792 +- 0.024430) dx = (4.786875 +- 0.031580) 
+A_counts_yesB: sx = (2.545625 +- 0.023029) dx = (3.720417 +- 0.027840) 
+B_counts_noB: sx = (2.185625 +- 0.015089) dx = (1.243750 +- 0.011382) 
+B_counts_yesB: sx = (2.263750 +- 0.015356) dx = (1.451146 +- 0.012295) 
+C_counts_noB: sx = (6.047083 +- 0.035494) dx = (5.943958 +- 0.035190) 
+C_counts_yesB: sx = (6.219896 +- 0.025454) dx = (6.135000 +- 0.025280) 
+

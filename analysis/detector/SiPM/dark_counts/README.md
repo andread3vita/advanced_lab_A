@@ -8,3 +8,29 @@ The underlying idea it to obtain a linear dependence between the voltage and the
 - __Search()__: to find and count the number of peaks
 
 The "main" function called DarkCountAnalysis looks inside the provided directory for files with name in the format: count_A_330.root where 330 is related to 33.0 V (applied voltage), and A stands for the detector (A, B, C). Than loop over all these files to obtained the desired graph of dark counts.
+
+
+### Best configuration for temperature study
+
+Since the SiPMs are quite noisy, instead of using the TSpectrum class to search for the peaks, the best strategy is to make the histograms as smooth as possible, at which point, at the cost of losing the peaks that are very close to each other, it is possible to use the algorithm manual with a threshold close to 0.
+
+Configuration SiPM A:
+- n_A = 10
+- n_B = 10
+- manual = true
+- threshold = 0.0001
+- n_search = 5
+
+Configuration SiPM B:
+- n_A = 10 
+- n_B = 10
+- manual = true  
+- threshold = 0.005
+- n_search = 5
+
+Configuration SiPM C (both sx and dx):
+- n_A = 5 
+- n_B = 5
+- threshold = 0.00001
+- manual search
+- n_search = 5
