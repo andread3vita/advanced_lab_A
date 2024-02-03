@@ -3,4 +3,4 @@
 .gitattributes 
 ./analysis/detector/SiPM/gain/data/
 ./analysis/detector/SiPM/dark_counts/data/
-./analysis/muon_analysis/g-2/load_data.sh
+#./analysis/muon_analysis/g-2/load_data.sh
