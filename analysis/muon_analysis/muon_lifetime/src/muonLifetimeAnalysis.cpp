@@ -50,7 +50,7 @@ using std::string;
 */
 
 //////////// MAIN FUNCTION DECLARATIONS ///////////////////
-void summaryPlot(const char *datafile = "../results/fitResult.txt");
+void summaryPlot(const char *resultFile = "../results/fitResult.txt");
 void residualsAnalysis(const char *datafile);
 void biExponentialFit(const char *datafile);
 
