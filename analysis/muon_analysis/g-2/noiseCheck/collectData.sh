@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Specify the directory containing your files
-directory="../g-2/data"
+directory="../../g-2/data/"
 
 # Specify the output file name
-output_file="../total.txt"
+output_file="../../g-2/noiseCheck/total.txt"
 
 # Navigate to the directory
 cd "$directory" || exit
