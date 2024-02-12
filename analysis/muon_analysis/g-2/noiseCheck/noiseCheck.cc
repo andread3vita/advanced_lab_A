@@ -36,12 +36,18 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 */
 
 //////////// MAIN FUNCTION DECLARATIONS ///////////////////
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.05, bool verbose = TRUE,
+                  const int N = 1000000);
 
 //////////// MINOR FUNCTION DECLARATIONS ///////////////////
+double upperConfidenceLimit(std::vector<double> samples, double alpha);
+double CL_probability(const int N, const int window_size, const double alpha);
 
 //////////// FUNCTION DEFINITIONS ///////////////////
 
-void windowsCheck(const char *datafile, const int window_size, const double CL_prob)
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.05, bool verbose = TRUE,
+                  const int N = 1000000)
+
 {
 
     // ANSI escape codes for text colors
@@ -80,13 +86,17 @@ void windowsCheck(const char *datafile, const int window_size, const double CL_p
         probabilities.push_back(prob);
     }
 
+    double CL_prob = CL_probability(N, window_size, alpha);
+
     std::cout << "Confidence level probability value:" << CL_prob << std::endl;
     std::cout << "------------------------------------------" << std::endl;
     sleep(5);
 
     // Print sliding window of 5 elements
+    int suspect = 0;
     for (size_t i = 0; i <= probabilities.size() - window_size; ++i)
     {
+
         double prob = 0;
         for (size_t j = i; j < i + window_size; ++j)
         {
@@ -95,15 +105,25 @@ void windowsCheck(const char *datafile, const int window_size, const double CL_p
 
         if (prob < CL_prob)
         {
-            std::cout << "Window:" << i << "\t"
-                      << "probWin:" << round(prob * 1000) / 1000 << std::endl;
+            if (verbose)
+            {
+                std::cout << "Window:" << i << "\t"
+                          << "probWin:" << round(prob * 1000) / 1000 << std::endl;
+            }
         }
         else
         {
-            std::cout << RED_TEXT << "Window:" << i << "\t"
-                      << "probWin:" << round(prob * 1000) / 1000 << RESET_COLOR << std::endl;
+            suspect += 1;
+            if (verbose)
+            {
+                std::cout << RED_TEXT << "Window:" << i << "\t"
+                          << "probWin:" << round(prob * 1000) / 1000 << RESET_COLOR << std::endl;
+            }
         }
     }
+
+    std::cout << RED_TEXT << "\n\nSuspecious windows:" << suspect << RESET_COLOR << std::endl;
+
     delete calibration_parameters; // Free memory for calibration_parameters
 }
 
