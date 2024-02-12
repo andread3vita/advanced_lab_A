@@ -31,7 +31,9 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 #include "./../../../../src/StateFile.cc"
 
 /*
-
+ - windowsCheck:
+ - upperConfidenceLimit:
+ - CL_probability:
 
 */
 
@@ -127,30 +129,33 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
     delete calibration_parameters; // Free memory for calibration_parameters
 }
 
-double upperConfidenceLimit(std::vector<double> samples, double alpha)
+ddouble upperConfidenceLimit(std::vector<double> samples, double alpha)
 {
-    // Compute mean and standard deviation of the samples
+    // Compute the mean and standard deviation of the samples
     double sum = 0.0;
     for (double sample : samples)
     {
-        sum += sample;
+        sum += sample; // Accumulate sum of samples
     }
-    double mean = sum / samples.size();
+    double mean = sum / samples.size(); // Compute mean
 
+    // Compute the sum of squared differences from the mean
     double sum_squared_diff = 0.0;
     for (double sample : samples)
     {
         double diff = sample - mean;
-        sum_squared_diff += diff * diff;
+        sum_squared_diff += diff * diff; // Accumulate squared differences
     }
-    double variance = sum_squared_diff / (samples.size() - 1);
-    double std_dev = sqrt(variance);
+    double variance = sum_squared_diff / (samples.size() - 1); // Compute sample variance
+    double std_dev = sqrt(variance);                           // Compute standard deviation
 
+    // Compute the Z-score corresponding to the given confidence level
     double Z_score = TMath::NormQuantile(1 - alpha);
 
+    // Compute the upper confidence limit using the formula: upper_limit = Z_score * std_dev + mean
     double upper_limit = Z_score * std_dev + mean;
 
-    return upper_limit;
+    return upper_limit; // Return the computed upper confidence limit
 }
 
 double CL_probability(const int N, const int window_size, const double alpha)
@@ -185,7 +190,6 @@ double CL_probability(const int N, const int window_size, const double alpha)
     }
 
     std::vector<double> window_probabilities;
-    // Print sliding window of 5 elements
     for (size_t i = 0; i <= probabilities.size() - window_size; ++i)
     {
         double prob = 0;
