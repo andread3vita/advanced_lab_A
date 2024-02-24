@@ -2,20 +2,20 @@
 # If a script needs it, it'll load it from here.
 
 # SCRIPT INPUT
-filename: data/total.dat
+filename: ./data/total.dat
 xmin_fit: 200
 xmax_fit: 15000
-total_bins: 125
+total_bins: 75
 range_xmin: 0
 range_xmax: 16000
 total_number_events: 37529.000000
-number_fitted_events: 37527.000000
+number_fitted_events: 37529.000000
 
 
 # FIT RESULTS
-life_time: 2350.867057
-life_time_error: 16.076422
-normalization: 2210.962155
-normalization_error: 18.383453
-constant: 0.710112
-constant_error: 0.634026
+life_time: 2344.517839
+life_time_error: 16.136897
+normalization: 3696.994917
+normalization_error: 30.204391
+constant: 2.670938
+constant_error: 1.144620

@@ -1,12 +1,16 @@
 #include "./../../../../include/AnUtil.h"
 #include "./../../../../include/FolderManager.h"
+#include "./../../../../include/GrUtil.h"
 #include "./../../../../include/StateFile.h"
 #include "TCanvas.h"
 #include "TF1.h"
 #include "TH1D.h"
+#include "TLegend.h"
 
+#include <RtypesCore.h>
 #include <TH1.h>
 #include <TMath.h>
+#include <TPaveStats.h>
 #include <TStyle.h>
 #include <TVirtualPad.h>
 #include <cstdlib>
@@ -27,6 +31,12 @@ Double_t f_fit(Double_t *x, Double_t *par)
 {
   return f_no_B->Eval(x[0]) + f_no_B->GetParameter(1) * par[0] * TMath::Cos(par[1] * x[0] + par[2]);
 }
+
+// physical quantities
+double e              = 1.602176634e-19;               // Coulomb
+double c              = 299792458;                     // m/s
+double muon_mass      = (105.6583755e6) * e / (c * c); // kg
+double magnetic_filed = 5.4e-3;                        // tesla
 
 void G2_estimation()
 {
@@ -54,6 +64,15 @@ void G2_estimation()
   gPad->SetGrid();
 
   TH1D *h = LoadData("./data", total_bins, range_xmin, range_xmax);
+  h->SetStats(kFALSE);
+  h->SetTitle("N(t)=c+N_{0}e^{-t/#tau} over dataset with B");
+  h->GetXaxis()->SetTitle("time [ns]");
+  h->GetYaxis()->SetTitle(GrUtil::HLabel(h, "ns").c_str());
+  GrUtil::SetHTextSize(h);
+  h->GetXaxis()->SetTitleOffset(0.96);
+  h->GetYaxis()->SetTitleOffset(1.06);
+  h->GetXaxis()->SetMaxDigits(3);
+  h->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
   h->Draw();
 
   f_no_B = new TF1("f_no_B", "[0]+[1]*exp(-x/[2])", xmin_fit, xmax_fit);
@@ -73,10 +92,27 @@ void G2_estimation()
 
   f_no_B->Draw("SAME");
 
+  auto h_legend = new TLegend(0.25, 0.7, 0.9, 0.9);
+  h_legend->AddEntry(h, "data with B", "l");
+  h_legend->AddEntry(f_no_B, "function obtained without B", "l");
+  h_legend->Draw();
+
   c_no_cos->cd(2);
   gPad->SetGrid();
   TH1D *h_res = GetResiduals(h, f_no_B, xmin_fit, xmax_fit);
+  h_res->SetStats(kFALSE);
+  h_res->GetXaxis()->SetTitle("time [ns]");
+  h_res->SetTitle("Residuals of the plot on the left");
+  h_res->GetYaxis()->SetTitle(GrUtil::HLabel(h_res, "ns").c_str());
+  h_res->GetXaxis()->SetTitleOffset(0.96);
+  h_res->GetYaxis()->SetTitleOffset(1.06);
+  h_res->GetXaxis()->SetMaxDigits(3);
+  h_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
+  GrUtil::SetHTextSize(h_res);
+
   h_res->Draw();
+
+  c_no_cos->SaveAs("./g-2_fit/g-2_plot_olf_function.pdf");
 
   //================== PLOT WITH MAGNETIC FILED ==========================
   TCanvas *c_cos = new TCanvas("c_cos", "c_cos", 1800, 680);
@@ -84,27 +120,58 @@ void G2_estimation()
   c_cos->cd(1);
   gPad->SetGrid();
 
-  TH1D *h_cos = new TH1D("h_cos", "h_cos", total_bins, range_xmin, range_xmax);
+  TH1D *h_cos = new TH1D("h_cos", "Fit data with B and N(t)=c+N_{0}e^{-t/#tau} [1+Acos(#omega_{a} t + #phi)]", total_bins, range_xmin, range_xmax);
   h_cos->Add(h);
+  h_cos->SetStats(kTRUE);
+  h_cos->GetXaxis()->SetTitle("time [ns]");
+  h_cos->GetYaxis()->SetTitle(GrUtil::HLabel(h_cos, "ns").c_str());
+  GrUtil::SetHTextSize(h_cos);
+  h_cos->GetXaxis()->SetTitleOffset(0.96);
+  h_cos->GetYaxis()->SetTitleOffset(1.06);
+  h_cos->GetXaxis()->SetMaxDigits(3);
+  h_cos->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
   h_cos->Draw();
 
   TF1 *f_cos = new TF1("f_cos", f_fit, xmin_fit, xmax_fit, 3);
   f_cos->SetParName(0, "A");
   f_cos->SetParName(1, "#omega");
   f_cos->SetParName(2, "#phi");
-  f_cos->SetParLimits(0, 0, 5);
-  f_cos->SetParLimits(1, 0, 20);
-  f_cos->SetParLimits(2, 0, 7);
+  f_cos->SetParLimits(0, 0, 1);
+  f_cos->SetParLimits(1, -0.00001, 0);
+  f_cos->SetParLimits(2, 0, 2 * TMath::Pi());
 
   h_cos->Fit(f_cos, "MR");
 
   gStyle->SetOptStat("rm");
   gStyle->SetOptFit(1);
 
+  TPaveStats *pv = (TPaveStats *)h_cos->GetListOfFunctions()->FindObject("stats");
+  pv->SetX1NDC(0.45);
+  pv->SetX2NDC(0.9);
+  pv->SetY1NDC(0.55);
+  pv->SetY2NDC(0.9);
+  pv->Draw("SAME");
+
   c_cos->cd(2);
   gPad->SetGrid();
   TH1D *h_cos_res = GetResiduals(h_cos, f_cos, xmin_fit, xmax_fit);
+  h_cos_res->SetTitle("Residuals of the plot on the left");
+  h_cos_res->SetStats(kFALSE);
+  h_cos_res->GetXaxis()->SetTitle("time [ns]");
+  h_cos_res->GetYaxis()->SetTitle(GrUtil::HLabel(h_cos_res, "ns").c_str());
+  GrUtil::SetHTextSize(h_cos_res);
+  h_cos_res->GetXaxis()->SetTitleOffset(0.96);
+  h_cos_res->GetYaxis()->SetTitleOffset(1.06);
+  h_cos_res->GetXaxis()->SetMaxDigits(3);
+  h_cos_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
   h_cos_res->Draw();
+
+  c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
+  // ====== summary on obtained value =========
+  double omega_s = f_cos->GetParameter(1) * 10e9; // 1/s
+  double a_muon  = -omega_s * muon_mass / (magnetic_filed * e);
+  std::cout << " \n==== ANALYSIS RESULTS ====== " << std::endl;
+  std::cout << "asymmetri factor: " << a_muon << std::endl;
 
   return;
 }
