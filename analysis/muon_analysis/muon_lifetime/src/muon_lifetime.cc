@@ -69,7 +69,7 @@ Double_t chi_sqr(Double_t *val, Double_t *par)
   return sum;
 }
 
-void FitData(std::string filename, int bin = 75)
+void FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, int total_bins = 75)
 {
   /*
   arguments explanation: filename, the path to the file that contains all the data
@@ -79,13 +79,16 @@ void FitData(std::string filename, int bin = 75)
   The results of the fit are then saved into the result.txt statefile, together with a plot in .pdf
   */
 
-  StateFile *calibration_parameters = new StateFile("./../cal_arietta/results.txt");
+  int range_xmin = 0;
+  int range_xmax = 16000;
+
+  StateFile *calibration_parameters = new StateFile("./../../detector/arietta/results.txt");
 
   TCanvas *can = new TCanvas("c", "c", 900, 600);
   can->SetGrid();
 
   // loading data
-  h = new TH1D("h", "h", bin, 0, 16000);
+  h = new TH1D("h", "h", total_bins, range_xmin, range_xmax);
   h->GetXaxis()->SetTitle("time [ns]");
   h->GetYaxis()->SetTitle(GrUtil::HLabel(h, "ns").c_str());
   h->SetTitle("Fit muon lifetime");
@@ -97,8 +100,8 @@ void FitData(std::string filename, int bin = 75)
   }
 
   // fit
-  f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 16000);
-  f->SetParNames("constant", "normalization", "decay rate [ns]");
+  f = new TF1("f", "[0]+[1]*exp(-x/[2])", xmin_fit, xmax_fit);
+  f->SetParNames("constant", "normalization", "lifetime [ns]");
   f->SetParameter(2, 2200);
   f->SetParLimits(0, 0, 200);
   h->Fit(f, "RM");
@@ -117,13 +120,23 @@ void FitData(std::string filename, int bin = 75)
   can->SaveAs("./lifetime_fit.pdf");
 
   // state file output
-  StateFile *results = new StateFile("./results.txt");
+  StateFile *results = new StateFile("./results/results_single_fit.txt");
+
+  results->UpdateValueOf("filename", filename);
+  results->UpdateValueOf("xmin_fit", std::to_string(xmin_fit));
+  results->UpdateValueOf("xmax_fit", std::to_string(xmax_fit));
+  results->UpdateValueOf("total_bins", std::to_string(total_bins));
+  results->UpdateValueOf("range_xmin", std::to_string(range_xmin));
+  results->UpdateValueOf("range_xmax", std::to_string(range_xmax));
+
   results->UpdateValueOf("life_time", std::to_string(f->GetParameter(2)));
   results->UpdateValueOf("life_time_error", std::to_string(f->GetParError(2)));
   results->UpdateValueOf("normalization", std::to_string(f->GetParameter(1)));
   results->UpdateValueOf("normalization_error", std::to_string(f->GetParError(1)));
   results->UpdateValueOf("constant", std::to_string(f->GetParameter(0)));
   results->UpdateValueOf("constant_error", std::to_string(f->GetParError(0)));
+  results->UpdateValueOf("total_number_events", std::to_string(h->Integral(0, total_bins)));
+  results->UpdateValueOf("number_fitted_events", std::to_string(h->Integral(h->FindBin(xmin_fit), total_bins)));
 
   // ############### DRAW THE CHI² ###########################
   TCanvas *c_chi = new TCanvas("c_chi", "c_chi", 1000, 650);

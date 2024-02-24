@@ -26,5 +26,6 @@ void run()
   gROOT->ProcessLine((".L " + src_path + "GrUtil.cc").c_str());
 
   // load macros for this analysis
-  gROOT->ProcessLine(".L ./g-2_analysis.cc");
+  gROOT->ProcessLine(".L ./quick_check_plot.cc");
+  gROOT->ProcessLine(".L ./g-2_fit/g-2_fit.cc");
 }
