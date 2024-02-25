@@ -3,19 +3,19 @@
 
 # SCRIPT INPUT
 filename: ./data/total.dat
-xmin_fit: 200
+xmin_fit: 600
 xmax_fit: 15000
-total_bins: 75
+total_bins: 100
 range_xmin: 0
 range_xmax: 16000
 total_number_events: 37529.000000
-number_fitted_events: 37529.000000
+number_fitted_events: 33509.000000
 
 
 # FIT RESULTS
-life_time: 2344.517839
-life_time_error: 16.136897
-normalization: 3696.994917
-normalization_error: 30.204391
-constant: 2.670938
-constant_error: 1.144620
+life_time: 2335.324202
+life_time_error: 17.235344
+normalization: 2816.680714
+normalization_error: 28.097592
+constant: 0.350990
+constant_error: 0.717269

@@ -6,7 +6,7 @@
 #include "TROOT.h"
 #include "TSystem.h"
 
-void run_data_analysis()
+void run_data_analysis(int bins)
 {
   // load usefull libraries
   std::string lib_path     = "./../../../lib/";
@@ -23,5 +23,9 @@ void run_data_analysis()
   // load macros for this analysis
   gROOT->ProcessLine(".L ./g-2_fit/g-2_fit.cc");
 
-  gROOT->ProcessLine("G2_estimation()");
+  // create the command to launch the analysis
+  std::string command = "G2_estimation(";
+  command += std::to_string(bins);
+  command += ")";
+  gROOT->ProcessLine(command.c_str());
 }

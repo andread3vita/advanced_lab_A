@@ -19,18 +19,20 @@
 #include <string>
 #include <vector>
 
-// ======= HELP FUNCTIONS DECLARATION =========
-TH1D *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax);
-TH1D *GetResiduals(const TH1D *h, const TF1 *f, double xmin, double xmax);
-
-// ======= ANALYSIS FUNCTIONS ==========
-
-// define functions outside the main method
+/*
+ *
+ */
+// ======= HELP FUNCTIONS AND OBJECTS =========
+TH1D    *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax);
+TH1D    *GetResiduals(const TH1D *h, const TF1 *f, double xmin, double xmax);
 TF1     *f_no_B;
 Double_t f_fit(Double_t *x, Double_t *par)
 {
-  return f_no_B->Eval(x[0]) + f_no_B->GetParameter(1) * par[0] * TMath::Cos(par[1] * x[0] + par[2]);
+  double N   = f_no_B->GetParameter(1);
+  double tau = f_no_B->GetParameter(2);
+  return f_no_B->Eval(x[0]) + N * par[0] * TMath::Exp(-x[0] / tau) * TMath::Cos(par[1] * x[0] + par[2]);
 }
+// ======= ANALYSIS FUNCTIONS ==========
 
 // physical quantities
 double e              = 1.602176634e-19;               // Coulomb
@@ -38,7 +40,7 @@ double c              = 299792458;                     // m/s
 double muon_mass      = (105.6583755e6) * e / (c * c); // kg
 double magnetic_filed = 5.4e-3;                        // tesla
 
-void G2_estimation()
+void G2_estimation(int bin_number_B)
 {
 
   // get all vlues from analysis without magnetic field
@@ -51,7 +53,7 @@ void G2_estimation()
   int    total_bins           = std::stoi(input_parameters_file.ValueOf("total_bins"));
   int    total_number_events  = std::stoi(input_parameters_file.ValueOf("total_number_events"));
   int    number_fitted_events = std::stoi(input_parameters_file.ValueOf("number_fitted_events"));
-  double bin_width            = (range_xmax - range_xmin) * 1.0 / total_bins;
+  double bin_width_no_B       = (range_xmax - range_xmin) * 1.0 / total_bins;
 
   double constant      = std::stod(input_parameters_file.ValueOf("constant"));
   double normalization = std::stod(input_parameters_file.ValueOf("normalization"));
@@ -63,7 +65,9 @@ void G2_estimation()
   c_no_cos->cd(1);
   gPad->SetGrid();
 
-  TH1D *h = LoadData("./data", total_bins, range_xmin, range_xmax);
+  int    bin_B       = bin_number_B;
+  double bin_width_B = (range_xmax - range_xmin) * 1.0 / bin_B;
+  TH1D  *h           = LoadData("./data", bin_B, range_xmin, range_xmax);
   h->SetStats(kFALSE);
   h->SetTitle("N(t)=c+N_{0}e^{-t/#tau} over dataset with B");
   h->GetXaxis()->SetTitle("time [ns]");
@@ -86,8 +90,10 @@ void G2_estimation()
 
   int n_events_in_range = h->Integral(h->FindBin(xmin_fit), h->FindBin(xmax_fit));
 
-  f_no_B->FixParameter(0, constant * 1.0 * n_events_in_range / number_fitted_events);
-  f_no_B->FixParameter(1, normalization * 1.0 * n_events_in_range / number_fitted_events);
+  double k = 1.0 * n_events_in_range * bin_width_B / (number_fitted_events * bin_width_no_B);
+
+  f_no_B->FixParameter(0, constant * 1.0 * k);
+  f_no_B->FixParameter(1, normalization * 1.0 * k);
   f_no_B->FixParameter(2, life_time);
 
   f_no_B->Draw("SAME");
@@ -120,7 +126,7 @@ void G2_estimation()
   c_cos->cd(1);
   gPad->SetGrid();
 
-  TH1D *h_cos = new TH1D("h_cos", "Fit data with B and N(t)=c+N_{0}e^{-t/#tau} [1+Acos(#omega_{a} t + #phi)]", total_bins, range_xmin, range_xmax);
+  TH1D *h_cos = new TH1D("h_cos", "Fit data with B and N(t)=c+N_{0}e^{-t/#tau} [1+Acos(#omega_{a} t + #phi)]", bin_B, range_xmin, range_xmax);
   h_cos->Add(h);
   h_cos->SetStats(kTRUE);
   h_cos->GetXaxis()->SetTitle("time [ns]");
@@ -137,8 +143,24 @@ void G2_estimation()
   f_cos->SetParName(1, "#omega");
   f_cos->SetParName(2, "#phi");
   f_cos->SetParLimits(0, 0, 1);
-  f_cos->SetParLimits(1, -0.00001, 0);
-  f_cos->SetParLimits(2, 0, 2 * TMath::Pi());
+  f_cos->SetParLimits(1, 0, 0.0000056);
+  f_cos->SetParLimits(2, -TMath::Pi(), TMath::Pi());
+  f_cos->SetParameter(0, 17);
+  f_cos->SetParameter(1, 0.000059);
+
+  // TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/2200)*(1+[2]*cos([3]*x+[4]))", xmin_fit, xmax_fit);
+  // f_cos->SetParName(0, "c");
+  // f_cos->SetParName(1, "N");
+  // f_cos->SetParName(2, "A");
+  // f_cos->SetParName(3, "#omega");
+  // f_cos->SetParName(4, "#phi");
+  //
+  // f_cos->SetParLimits(0, 0, 10);
+  // f_cos->SetParLimits(2, 0, 1);
+  // f_cos->SetParLimits(3, 0, 0.00001);
+  // f_cos->SetParLimits(4, -TMath::Pi(), TMath::Pi());
+  // f_cos->SetParameter(0, 5);
+  // f_cos->SetParameter(3, 5.3555014e-06);
 
   h_cos->Fit(f_cos, "MR");
 
@@ -168,9 +190,13 @@ void G2_estimation()
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
   // ====== summary on obtained value =========
-  double omega_s = f_cos->GetParameter(1) * 10e9; // 1/s
-  double a_muon  = -omega_s * muon_mass / (magnetic_filed * e);
+  double omega_s = f_cos->GetParameter(1) * 1e9; // 1/s
+  double a_muon  = omega_s * muon_mass / (magnetic_filed * e);
   std::cout << " \n==== ANALYSIS RESULTS ====== " << std::endl;
+  std::cout << "omega=" << omega_s << " s" << std::endl;
+  std::cout << "muon mass=" << muon_mass << " kg" << std::endl;
+  std::cout << "magnetic field=" << magnetic_filed << " T" << std::endl;
+  std::cout << "electric charge=" << e << " C" << std::endl;
   std::cout << "asymmetri factor: " << a_muon << std::endl;
 
   return;
