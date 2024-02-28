@@ -64,6 +64,7 @@ void G2_estimation(int bin_number_B)
   c_no_cos->Divide(2, 1);
   c_no_cos->cd(1);
   gPad->SetGrid();
+  gPad->SetLogy();
 
   int    bin_B       = bin_number_B;
   double bin_width_B = (range_xmax - range_xmin) * 1.0 / bin_B;
@@ -116,6 +117,11 @@ void G2_estimation(int bin_number_B)
   h_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
   GrUtil::SetHTextSize(h_res);
 
+  // get maximum and minimum to get a good plotting range
+  double res_max = h_res->GetMaximum();
+  double res_min = h_res->GetMinimum();
+  h_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
+
   h_res->Draw();
 
   c_no_cos->SaveAs("./g-2_fit/g-2_plot_olf_function.pdf");
@@ -125,6 +131,7 @@ void G2_estimation(int bin_number_B)
   c_cos->Divide(2, 1);
   c_cos->cd(1);
   gPad->SetGrid();
+  gPad->SetLogy();
 
   TH1D *h_cos = new TH1D("h_cos", "Fit data with B and N(t)=c+N_{0}e^{-t/#tau} [1+Acos(#omega_{a} t + #phi)]", bin_B, range_xmin, range_xmax);
   h_cos->Add(h);
@@ -143,24 +150,24 @@ void G2_estimation(int bin_number_B)
   f_cos->SetParName(1, "#omega");
   f_cos->SetParName(2, "#phi");
   f_cos->SetParLimits(0, 0, 1);
-  f_cos->SetParLimits(1, 0, 0.0000056);
-  f_cos->SetParLimits(2, -TMath::Pi(), TMath::Pi());
-  f_cos->SetParameter(0, 17);
-  f_cos->SetParameter(1, 0.000059);
+  f_cos->SetParLimits(1, 0, 0.01);
+  f_cos->SetParLimits(2, 0, 2 * TMath::Pi());
+  f_cos->SetParameter(1, 4 * 1e-3);
+  // f_cos->SetParameter(2, 0);
 
-  // TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/2200)*(1+[2]*cos([3]*x+[4]))", xmin_fit, xmax_fit);
+  // TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/[5])*(1+[2]*cos([3]*x+[4]))", xmin_fit, xmax_fit);
   // f_cos->SetParName(0, "c");
   // f_cos->SetParName(1, "N");
   // f_cos->SetParName(2, "A");
   // f_cos->SetParName(3, "#omega");
   // f_cos->SetParName(4, "#phi");
+  // f_cos->SetParName(5, "#tau [ns]");
   //
-  // f_cos->SetParLimits(0, 0, 10);
   // f_cos->SetParLimits(2, 0, 1);
-  // f_cos->SetParLimits(3, 0, 0.00001);
   // f_cos->SetParLimits(4, -TMath::Pi(), TMath::Pi());
-  // f_cos->SetParameter(0, 5);
-  // f_cos->SetParameter(3, 5.3555014e-06);
+  // f_cos->SetParLimits(3, 0, 0.00001);
+  // f_cos->SetParameter(3, 1e-7);
+  // f_cos->FixParameter(5, life_time);
 
   h_cos->Fit(f_cos, "MR");
 
@@ -186,11 +193,13 @@ void G2_estimation(int bin_number_B)
   h_cos_res->GetYaxis()->SetTitleOffset(1.06);
   h_cos_res->GetXaxis()->SetMaxDigits(3);
   h_cos_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
+  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
+  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
   h_cos_res->Draw();
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
   // ====== summary on obtained value =========
-  double omega_s = f_cos->GetParameter(1) * 1e9; // 1/s
+  double omega_s = f_cos->GetParameter(3) * 1e9; // 1/s
   double a_muon  = omega_s * muon_mass / (magnetic_filed * e);
   std::cout << " \n==== ANALYSIS RESULTS ====== " << std::endl;
   std::cout << "omega=" << omega_s << " s" << std::endl;
