@@ -199,14 +199,14 @@ void G2_estimation(int bin_number_B)
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
   // ====== summary on obtained value =========
-  double omega_s = f_cos->GetParameter(3) * 1e9; // 1/s
-  double a_muon  = omega_s * muon_mass / (magnetic_filed * e);
+  double omega_s = f_cos->GetParameter(1) * 1e9; // 1/s
+  double g_muon  = 2.0 * muon_mass * omega_s / (magnetic_filed * e);
   std::cout << " \n==== ANALYSIS RESULTS ====== " << std::endl;
   std::cout << "omega=" << omega_s << " s" << std::endl;
   std::cout << "muon mass=" << muon_mass << " kg" << std::endl;
   std::cout << "magnetic field=" << magnetic_filed << " T" << std::endl;
   std::cout << "electric charge=" << e << " C" << std::endl;
-  std::cout << "asymmetri factor: " << a_muon << std::endl;
+  std::cout << "giromagnetic factor g: " << g_muon << std::endl;
 
   return;
 }
