@@ -22,7 +22,7 @@ void SpectrumPlot(int nbins = 75, double xmin = 0, double xmax = 18000)
   TH1D *spectrum = new TH1D("spectrum", "spectrum", nbins, xmin, xmax);
 
   // Fill histogram
-  std::vector<std::string> files = data_folder->GetAllObjectsPath();
+  std::vector<std::string> files = data_folder->GetListOfObjectsPath("2023");
   std::cout << files.size() << std::endl;
   for (std::string file : files)
   {

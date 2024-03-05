@@ -6,6 +6,7 @@
 #include "TF1.h"
 #include "TH1D.h"
 #include "TLegend.h"
+#include "TSystem.h"
 
 #include <RtypesCore.h>
 #include <TH1.h>
@@ -16,6 +17,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -23,7 +26,7 @@
  *
  */
 // ======= HELP FUNCTIONS AND OBJECTS =========
-TH1D    *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax);
+TH1D    *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax, int dataset_initial, int dataset_final);
 TH1D    *GetResiduals(const TH1D *h, const TF1 *f, double xmin, double xmax);
 TF1     *f_no_B;
 Double_t f_fit(Double_t *x, Double_t *par)
@@ -40,7 +43,7 @@ double c              = 299792458;                     // m/s
 double muon_mass      = (105.6583755e6) * e / (c * c); // kg
 double magnetic_filed = 5.4e-3;                        // tesla
 
-void G2_estimation(int bin_number_B)
+std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset_final = 0)
 {
 
   // get all vlues from analysis without magnetic field
@@ -68,7 +71,7 @@ void G2_estimation(int bin_number_B)
 
   int    bin_B       = bin_number_B;
   double bin_width_B = (range_xmax - range_xmin) * 1.0 / bin_B;
-  TH1D  *h           = LoadData("./data", bin_B, range_xmin, range_xmax);
+  TH1D  *h           = LoadData("./data", bin_B, range_xmin, range_xmax, dataset_initial, dataset_final);
   h->SetStats(kFALSE);
   h->SetTitle("N(t)=c+N_{0}e^{-t/#tau} over dataset with B");
   h->GetXaxis()->SetTitle("time [ns]");
@@ -152,7 +155,7 @@ void G2_estimation(int bin_number_B)
   f_cos->SetParLimits(0, 0, 1);
   f_cos->SetParLimits(1, 0, 0.01);
   f_cos->SetParLimits(2, 0, 2 * TMath::Pi());
-  f_cos->SetParameter(1, 4 * 1e-3);
+  f_cos->SetParameter(1, 4.7 * 1e-3);
   // f_cos->SetParameter(2, 0);
 
   // TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/[5])*(1+[2]*cos([3]*x+[4]))", xmin_fit, xmax_fit);
@@ -169,7 +172,7 @@ void G2_estimation(int bin_number_B)
   // f_cos->SetParameter(3, 1e-7);
   // f_cos->FixParameter(5, life_time);
 
-  h_cos->Fit(f_cos, "MR");
+  h_cos->Fit(f_cos, "MRQ");
 
   gStyle->SetOptStat("rm");
   gStyle->SetOptFit(1);
@@ -199,8 +202,9 @@ void G2_estimation(int bin_number_B)
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
   // ====== summary on obtained value =========
-  double omega_s = f_cos->GetParameter(1) * 1e9; // 1/s
-  double g_muon  = 2.0 * muon_mass * omega_s / (magnetic_filed * e);
+  double omega_s       = f_cos->GetParameter(1) * 1e9; // 1/s
+  double omega_s_error = f_cos->GetParError(1) * 1e9;  // 1/s
+  double g_muon        = 2.0 * muon_mass * omega_s / (magnetic_filed * e);
   std::cout << " \n==== ANALYSIS RESULTS ====== " << std::endl;
   std::cout << "omega=" << omega_s << " s" << std::endl;
   std::cout << "muon mass=" << muon_mass << " kg" << std::endl;
@@ -208,11 +212,45 @@ void G2_estimation(int bin_number_B)
   std::cout << "electric charge=" << e << " C" << std::endl;
   std::cout << "giromagnetic factor g: " << g_muon << std::endl;
 
+  // string outout
+  std::ostringstream output_string;
+  output_string << std::setw(8) << "omega = " << std::setw(12) << omega_s << " +- " << std::setw(12) << omega_s_error << "\t\t";
+  output_string << std::setw(10) << "phi = " << std::setw(13) << f_cos->GetParameter(2) << " +- " << std::setw(10) << f_cos->GetParError(2) << "\t\t";
+  output_string << std::setw(10) << "A = " << std::setw(10) << f_cos->GetParameter(0) << " +- " << std::setw(10) << f_cos->GetParError(0) << "\t\t";
+  output_string << std::setw(6) << "chi² = " << std::setw(10) << f_cos->GetChisquare() << " / " << std::setw(4) << f_cos->GetNDF() << "\n";
+
+  return output_string.str();
+}
+
+void G2_subset_estimation(int day_window, int bin_number_B)
+{
+  FolderManager           *data_folder = new FolderManager("./data");
+  std::vector<std::string> files       = data_folder->GetAllObjectsPath();
+  int                      first_day   = 0;
+  int                      last_day    = files.size() - day_window;
+
+  std::vector<std::string> results;
+
+  for (int i = first_day; i < last_day; i++)
+  {
+    AnUtil::ProgressBar(i * 1.0 / last_day, "analysing " + files[i].substr(files[i].find("dati"), 30) + " --> " + files[i + day_window].substr(files[i + day_window].find("dati"), 30), 1, 1, false);
+    gSystem->RedirectOutput("/dev/null");
+    std::string s_tmp = G2_estimation(bin_number_B, i, i + day_window);
+    gSystem->RedirectOutput(0);
+    results.push_back(s_tmp);
+  }
+  AnUtil::ProgressBar(last_day * 1.0 / last_day, "analysing " + files[last_day - 1].substr(files[last_day - 1].find("dati"), 30) + " --> " + files[last_day - 1 + day_window].substr(files[last_day - 1 + day_window].find("dati"), 30), 1, 1, false);
+
+  std::ofstream output("./g-2_fit/restults_fit.txt");
+  for (auto s : results)
+  {
+    output << s;
+  }
   return;
 }
 
 // ======= HELP FUNCTION DEFINITIONS =========
-TH1D *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax)
+TH1D *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax, int dataset_initial, int dataset_final)
 {
   // get calibration values from arietta
   StateFile *arietta_cal = new StateFile("../../detector/arietta/results.txt");
@@ -224,11 +262,15 @@ TH1D *LoadData(std::string path_to_data_folder, int nbins, int xmin, int xmax)
 
   FolderManager *data_folder = new FolderManager("./data");
   // Fill histogram
-  std::vector<std::string> files = data_folder->GetAllObjectsPath();
-  for (int i = 0; i < files.size(); i++)
+  std::vector<std::string> files = data_folder->GetListOfObjectsPath(".dat");
+
+  if (dataset_final == 0)
   {
-    AnUtil::ProgressBar((i + 1) * 1.0 / files.size(), "loading " + files[i].substr(files[i].find("dati"), 30), 1, 1, false);
-    // std::cout << i * 1.0 / files.size() << std::endl;
+    dataset_final = files.size();
+  }
+  for (int i = dataset_initial; i < dataset_final; i++)
+  {
+    AnUtil::ProgressBar((i + 1) * 1.0 / (dataset_final - dataset_initial), "loading " + files[i].substr(files[i].find("dati"), 30), 1, 1, false);
     std::ifstream input_file(files[i].c_str());
     int           tmp;
     while (input_file >> tmp)
