@@ -4,7 +4,7 @@
 # SCRIPT INPUT
 filename: ./data/total.dat
 xmin_fit: 2000
-xmax_fit: 12000
+xmax_fit: 16000
 total_bins: 75
 range_xmin: 0
 range_xmax: 16000
@@ -13,9 +13,9 @@ number_fitted_events: 18485.000000
 
 
 # FIT RESULTS
-life_time: 2159.596760
-life_time_error: 31.562667
-normalization: 4288.119106
-normalization_error: 97.508457
-constant: 10.988979
-constant_error: 2.810741
+life_time: 2194.712166
+life_time_error: 24.414403
+normalization: 4207.411795
+normalization_error: 82.744449
+constant: 6.773995
+constant_error: 1.208279

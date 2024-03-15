@@ -11,7 +11,7 @@
 #include "TROOT.h"
 #include "TSystem.h"
 
-void run()
+void load()
 {
   // load usefull libraries
   std::string lib_path     = "./../../../lib/";

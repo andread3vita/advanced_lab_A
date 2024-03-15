@@ -58,7 +58,7 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   int    number_fitted_events = std::stoi(input_parameters_file.ValueOf("number_fitted_events"));
   double bin_width_no_B       = (range_xmax - range_xmin) * 1.0 / total_bins;
 
-  double constant      = std::stod(input_parameters_file.ValueOf("constant"));
+  double constant      = std::stod(input_parameters_file.ValueOf("constant")); // TODO: rifitta tutto
   double normalization = std::stod(input_parameters_file.ValueOf("normalization"));
   double life_time     = std::stod(input_parameters_file.ValueOf("life_time"));
 
@@ -83,7 +83,7 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   h->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
   h->Draw();
 
-  f_no_B = new TF1("f_no_B", "[0]+[1]*exp(-x/[2])", xmin_fit, xmax_fit);
+  f_no_B = new TF1("f_no_B", "[0]+[1]*exp(-x/[2])", 100, 14000);
 
   f_no_B->SetParName(0, "constant");
   f_no_B->SetParName(1, "normalization");
@@ -96,17 +96,19 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
 
   double k = 1.0 * n_events_in_range * bin_width_B / (number_fitted_events * bin_width_no_B);
 
-  f_no_B->FixParameter(0, constant * 1.0 * k);
-  f_no_B->FixParameter(1, normalization * 1.0 * k);
-  f_no_B->FixParameter(2, life_time);
+  f_no_B->SetParLimits(0, 0, 10);
+  f_no_B->SetParameter(0, 5);
+  f_no_B->SetParameter(1, 3000);
+  f_no_B->SetParameter(2, life_time);
+  h->Fit(f_no_B, "MLR");
 
   f_no_B->Draw("SAME");
 
-  auto h_legend = new TLegend(0.25, 0.7, 0.9, 0.9);
-  h_legend->AddEntry(h, "data with B", "l");
-  h_legend->AddEntry(f_no_B, "function obtained without B", "l");
-  h_legend->Draw();
-
+  // auto h_legend = new TLegend(0.25, 0.7, 0.9, 0.9);
+  // h_legend->AddEntry(h, "data with B", "l");
+  // h_legend->AddEntry(f_no_B, "function obtained without B", "l");
+  // h_legend->Draw();
+  gStyle->SetOptFit(1);
   c_no_cos->cd(2);
   gPad->SetGrid();
   TH1D *h_res = GetResiduals(h, f_no_B, xmin_fit, xmax_fit);
@@ -123,7 +125,7 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   // get maximum and minimum to get a good plotting range
   double res_max = h_res->GetMaximum();
   double res_min = h_res->GetMinimum();
-  h_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
+  h_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
 
   h_res->Draw();
 
@@ -146,33 +148,43 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   h_cos->GetYaxis()->SetTitleOffset(1.06);
   h_cos->GetXaxis()->SetMaxDigits(3);
   h_cos->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
-  h_cos->Draw();
+  h_cos->Draw("E");
 
-  TF1 *f_cos = new TF1("f_cos", f_fit, xmin_fit, xmax_fit, 3);
-  f_cos->SetParName(0, "A");
-  f_cos->SetParName(1, "#omega");
-  f_cos->SetParName(2, "#phi");
-  f_cos->SetParLimits(0, 0, 1);
-  f_cos->SetParLimits(1, 0, 0.01);
-  f_cos->SetParLimits(2, 0, 2 * TMath::Pi());
-  f_cos->SetParameter(1, 4.7 * 1e-3);
+  // TF1 *f_cos = new TF1("f_cos", f_fit, xmin_fit, xmax_fit, 3);
+  // f_cos->SetParName(0, "A");
+  // f_cos->SetParName(1, "#omega");
+  // f_cos->SetParName(2, "#phi");
+  // f_cos->SetParLimits(0, 0, 1);
+  // f_cos->SetParLimits(1, 0, 0.01);
+  // f_cos->SetParLimits(2, -TMath::Pi(), TMath::Pi());
+  // f_cos->SetParameter(1, 4.3 * 1e-3);
   // f_cos->SetParameter(2, 0);
 
-  // TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/[5])*(1+[2]*cos([3]*x+[4]))", xmin_fit, xmax_fit);
-  // f_cos->SetParName(0, "c");
-  // f_cos->SetParName(1, "N");
-  // f_cos->SetParName(2, "A");
-  // f_cos->SetParName(3, "#omega");
-  // f_cos->SetParName(4, "#phi");
-  // f_cos->SetParName(5, "#tau [ns]");
-  //
-  // f_cos->SetParLimits(2, 0, 1);
-  // f_cos->SetParLimits(4, -TMath::Pi(), TMath::Pi());
-  // f_cos->SetParLimits(3, 0, 0.00001);
-  // f_cos->SetParameter(3, 1e-7);
-  // f_cos->FixParameter(5, life_time);
+  TF1 *f_cos = new TF1("f_cos", "[0]+[1]*exp(-x/[5])*(1+[2]*cos([3]*x+[4]*3.1415926535897932))", xmin_fit, xmax_fit);
+  f_cos->SetParName(0, "c");
+  f_cos->SetParName(1, "N");
+  f_cos->SetParName(2, "A");
+  f_cos->SetParName(3, "#omega");
+  f_cos->SetParName(4, "#phi");
+  f_cos->SetParName(5, "#tau [ns]");
 
-  h_cos->Fit(f_cos, "MRQ");
+  f_cos->SetParLimits(0, 2, 10);
+  f_cos->SetParameter(0, 5);
+
+  f_cos->SetParLimits(1, 0, 10000);
+  f_cos->SetParameter(1, 4000);
+
+  f_cos->SetParLimits(2, 0, 1);
+
+  f_cos->SetParLimits(3, 0.002, 0.06);
+  f_cos->SetParameter(3, 4.3e-3);
+
+  f_cos->SetParLimits(4, -1, 1);
+  f_cos->SetParameter(4, 0);
+
+  f_cos->FixParameter(5, life_time);
+
+  h_cos->Fit(f_cos, "LMR");
 
   gStyle->SetOptStat("rm");
   gStyle->SetOptFit(1);
@@ -196,8 +208,8 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   h_cos_res->GetYaxis()->SetTitleOffset(1.06);
   h_cos_res->GetXaxis()->SetMaxDigits(3);
   h_cos_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
-  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
-  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.2, res_max * 1.2);
+  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
+  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
   h_cos_res->Draw();
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
