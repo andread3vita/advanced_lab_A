@@ -25,6 +25,7 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 #include "TLegend.h"
 #include "TMath.h"
 #include "TMultiGraph.h"
+#include <utility>
 
 #include "./../../../../include/AnUtil.h"
 #include "./../../../../include/StateFile.h"
@@ -38,22 +39,24 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 */
 
 //////////// MAIN FUNCTION DECLARATIONS ///////////////////
-void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.05, bool verbose = TRUE,
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.99, bool verbose = TRUE,
                   const int N = 1000000);
 
 //////////// MINOR FUNCTION DECLARATIONS ///////////////////
-double upperConfidenceLimit(std::vector<double> samples, double alpha);
-double CL_probability(const int N, const int window_size, const double alpha);
+std::pair<double, double> ConfidenceLimit(std::vector<double> samples, double alpha);
+std::pair<double, double> MC_probability(const int N, const int window_size, const double alpha);
+
+std::vector<double> removeIndices(const std::vector<double> &vec, const std::vector<int> &indices);
 
 //////////// FUNCTION DEFINITIONS ///////////////////
-
-void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.05, bool verbose = TRUE,
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.99, bool verbose = TRUE,
                   const int N = 1000000)
 
 {
 
     // ANSI escape codes for text colors
     const char *RED_TEXT = "\033[1;31m";
+    const char *BLUE_TEXT = "\033[1;34m";
     const char *RESET_COLOR = "\033[0m";
 
     // Open data file
@@ -75,95 +78,108 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
         converted_values.push_back(converted_value);
     }
 
-    std::vector<double> probabilities;
-    probabilities.reserve(converted_values.size());
+    std::pair<double, double> CL_prob = MC_probability(N, window_size, alpha);
 
-    double delta = a + b;
-    double lifetime = 2196.981;
-    for (double x : converted_values)
-    {
-        double x1 = x - delta;
-        double x2 = x + delta;
-        double prob = exp(-x1 / lifetime) - exp(-x2 / lifetime);
-        probabilities.push_back(prob);
-    }
-
-    double CL_prob = CL_probability(N, window_size, alpha);
-
-    std::cout << "Confidence level probability value:" << CL_prob << std::endl;
+    std::cout << "Confidence level sum of deltaTs value (left):" << CL_prob.first << " ns" << std::endl;
+    std::cout << "Confidence level sum of deltaTs value (right):" << CL_prob.second << " ns" << std::endl;
     std::cout << "------------------------------------------" << std::endl;
-    sleep(5);
+    sleep(10);
 
     // Print sliding window of 5 elements
-    int suspect = 0;
-    for (size_t i = 0; i <= probabilities.size() - window_size; ++i)
+    int suspect_left = 0;
+    int suspect_right = 0;
+    std::vector<int> suspecious_index_left;
+    std::vector<int> suspecious_index_right;
+
+    for (size_t i = 0; i <= converted_values.size() - window_size; ++i)
     {
 
         double prob = 0;
+        std::vector<int> wind_indices;
         for (size_t j = i; j < i + window_size; ++j)
         {
-            prob += probabilities[j];
+            wind_indices.push_back(j);
+            prob += converted_values[j];
         }
 
-        if (prob < CL_prob)
+        if (prob < CL_prob.first)
         {
+            suspect_left += 1;
+            suspecious_index_left.insert(suspecious_index_left.end(), wind_indices.begin(), wind_indices.end());
+
             if (verbose)
             {
-                std::cout << "Window:" << i << "\t"
-                          << "probWin:" << round(prob * 1000) / 1000 << std::endl;
+                std::cout << RED_TEXT << "Window:" << i << "\t"
+                          << "sum of deltaTs:" << prob << " ns" << RESET_COLOR << std::endl;
+            }
+        }
+        else if (prob > CL_prob.second)
+        {
+            suspect_right += 1;
+            suspecious_index_right.insert(suspecious_index_right.end(), wind_indices.begin(), wind_indices.end());
+
+            if (verbose)
+            {
+                std::cout << BLUE_TEXT << "Window:" << i << "\t"
+                          << "sum of deltaTs:" << prob << " ns" << RESET_COLOR << std::endl;
             }
         }
         else
         {
-            suspect += 1;
             if (verbose)
             {
-                std::cout << RED_TEXT << "Window:" << i << "\t"
-                          << "probWin:" << round(prob * 1000) / 1000 << RESET_COLOR << std::endl;
+                std::cout << "Window:" << i << "\t"
+                          << "sum of deltaTs:" << prob << " ns" << std::endl;
             }
         }
     }
 
-    std::cout << RED_TEXT << "\n\nSuspecious windows:" << suspect << RESET_COLOR << std::endl;
+    std::cout << RED_TEXT << "\n\nSuspecious windows (left):" << suspect_left << RESET_COLOR << std::endl;
+    std::cout << BLUE_TEXT << "Suspecious windows (right):" << suspect_right << RESET_COLOR << std::endl;
 
+    int expected_outliers = (converted_values.size() - window_size) / 2 * alpha;
+
+    std::cout << expected_outliers << std::endl;
+    std::vector<int> indices;
+
+    if (suspect_left > expected_outliers)
+    {
+        indices.insert(indices.end(), suspecious_index_left.begin(), suspecious_index_left.end());
+    }
+    if (suspect_right > expected_outliers)
+    {
+        indices.insert(indices.end(), suspecious_index_right.begin(), suspecious_index_right.end());
+    }
+
+    std::vector<double> result = removeIndices(converted_values, indices);
+
+    TCanvas *can = new TCanvas("canvas", "Canvas", 800, 600);
+    TH1D *histogram = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 14000);
+
+    for (double val : result)
+    {
+        histogram->Fill(val);
+    }
+
+    histogram->Draw();
     delete calibration_parameters; // Free memory for calibration_parameters
 }
 
-ddouble upperConfidenceLimit(std::vector<double> samples, double alpha)
+std::pair<double, double> ConfidenceLimit(std::vector<double> samples, double alpha)
 {
-    // Compute the mean and standard deviation of the samples
-    double sum = 0.0;
-    for (double sample : samples)
-    {
-        sum += sample; // Accumulate sum of samples
-    }
-    double mean = sum / samples.size(); // Compute mean
+    std::vector<double> data = samples;
+    sort(data.begin(), data.end());
 
-    // Compute the sum of squared differences from the mean
-    double sum_squared_diff = 0.0;
-    for (double sample : samples)
-    {
-        double diff = sample - mean;
-        sum_squared_diff += diff * diff; // Accumulate squared differences
-    }
-    double variance = sum_squared_diff / (samples.size() - 1); // Compute sample variance
-    double std_dev = sqrt(variance);                           // Compute standard deviation
+    int n = data.size();
+    int left_idx = static_cast<int>((alpha) / 2 * n);
+    int right_idx = static_cast<int>((1 - alpha / 2) * n);
 
-    // Compute the Z-score corresponding to the given confidence level
-    double Z_score = TMath::NormQuantile(1 - alpha);
-
-    // Compute the upper confidence limit using the formula: upper_limit = Z_score * std_dev + mean
-    double upper_limit = Z_score * std_dev + mean;
-
-    return upper_limit; // Return the computed upper confidence limit
+    return std::make_pair(data[left_idx], data[right_idx]);
 }
 
-double CL_probability(const int N, const int window_size, const double alpha)
+std::pair<double, double> MC_probability(const int N, const int window_size, const double alpha)
 {
-    // Open Arietta calibration parameters file
-    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
     double lifetime = 2196.981;
-
     std::exponential_distribution<double> distribution(1 / lifetime);
 
     // Generate N exponential distribution samples
@@ -174,39 +190,27 @@ double CL_probability(const int N, const int window_size, const double alpha)
         samples.push_back(sample);
     }
 
-    double a = std::stod(calibration_parameters->ValueOf("m"));
-    double b = std::stod(calibration_parameters->ValueOf("q"));
-
-    std::vector<double> probabilities;
-    probabilities.reserve(samples.size());
-
-    double delta = a + b;
-    for (double x : samples)
-    {
-        double x1 = x - delta;
-        double x2 = x + delta;
-        double prob = exp(-x1 / lifetime) - exp(-x2 / lifetime);
-        probabilities.push_back(prob);
-    }
+    // prob = (2*sigma/tau)*exp(-t/tau)
+    // win prob = prod(prob) = (2*sigma/tau)^N * exp(-sum(t)/tau)
+    // log(win prob) = N*log(2*sigma/tau) - sum(t)/tau
+    // check = sum(t)
 
     std::vector<double> window_probabilities;
-    for (size_t i = 0; i <= probabilities.size() - window_size; ++i)
+    for (size_t i = 0; i <= samples.size() - window_size; ++i)
     {
         double prob = 0;
         for (size_t j = i; j < i + window_size; ++j)
         {
-            prob += probabilities[j];
+            prob += samples[j];
         }
         window_probabilities.push_back(prob);
     }
 
-    double upper_limit = upperConfidenceLimit(window_probabilities, alpha);
+    std::pair<double, double> limit = ConfidenceLimit(window_probabilities, alpha);
 
-    // Create a canvas to draw the histogram
+    // Create a canvas and a histogram
     TCanvas *canvas = new TCanvas("canvas", "Canvas", 800, 600);
-
-    // Create a histogram to draw
-    TH1D *histogram = new TH1D("histogram", "Histogram of Window Probabilities", 70, 0, 1);
+    TH1D *histogram = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 140000);
 
     // Fill the histogram with the values from the vector
     for (size_t i = 0; i < window_probabilities.size(); ++i)
@@ -218,9 +222,40 @@ double CL_probability(const int N, const int window_size, const double alpha)
     histogram->Draw();
 
     // Draw a vertical line corresponding to the upper limit
-    TLine *line = new TLine(upper_limit, 0, upper_limit, histogram->GetMaximum());
+    TLine *line = new TLine(limit.first, 0, limit.first, histogram->GetMaximum());
+    TLine *line2 = new TLine(limit.second, 0, limit.second, histogram->GetMaximum());
     line->SetLineColor(kRed); // Set line color to red
     line->Draw("same");       // Draw line on the same canvas
 
-    return upper_limit;
+    line2->SetLineColor(kRed); // Set line color to red
+    line2->Draw("same");       // Draw line on the same canvas
+
+    return limit;
+}
+
+std::vector<double> removeIndices(const std::vector<double> &vec, const std::vector<int> &indices)
+{
+    std::vector<double> result;
+    result.reserve(vec.size() - indices.size());
+
+    // Creare un vettore con indici da rimuovere
+    std::vector<bool> toRemove(vec.size(), false);
+    for (int index : indices)
+    {
+        if (index >= 0 && index < vec.size())
+        {
+            toRemove[index] = true;
+        }
+    }
+
+    // Copiare gli elementi non rimossi nel risultato
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        if (!toRemove[i])
+        {
+            result.push_back(vec[i]);
+        }
+    }
+
+    return result;
 }
