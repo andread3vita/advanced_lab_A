@@ -100,12 +100,19 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     // Close the file
     infile.close();
 
+    double fit_val = 0.;
+    double err_val = 0.;
     // Print all values
     for (size_t i = 0; i < val.size(); ++i)
     {
         std::cout << "range: " << range[i] << "\t"
                   << "tau: " << val[i] << "\t"
                   << "sigma: " << err[i] << std::endl;
+        if (i == 0)
+        {
+            fit_val = val[i];
+            err_val = err[i];
+        }
     }
 
     // Convert std::vectors to arrays
@@ -117,18 +124,18 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     // STATISTICS //
     ////////////////
 
-    // Compute mean and sigma
-    double mean = 0;
-    double norm = 0;
+    // // Compute mean and sigma
+    // double mean = 0;
+    // double norm = 0;
 
-    for (int i = 0; i < val.size(); ++i)
-    {
-        mean += x_arr[i] / pow(err_x_arr[i], 2);
-        norm += pow(1.0 / err_x_arr[i], 2);
-    }
+    // for (int i = 0; i < val.size(); ++i)
+    // {
+    //     mean += x_arr[i] / pow(err_x_arr[i], 2);
+    //     norm += pow(1.0 / err_x_arr[i], 2);
+    // }
 
-    mean = mean / norm;
-    double sigma = pow(norm, -0.5);
+    // mean = mean / norm;
+    // double sigma = pow(norm, -0.5);
 
     //////////////
     // GRAPHICS //
@@ -142,7 +149,7 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     graph->SetMarkerStyle(kFullSquare);
 
     // Create a vertical line with a coloured region
-    TLine *verticalLine = new TLine(mean, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), mean,
+    TLine *verticalLine = new TLine(fit_val, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), fit_val,
                                     graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()));
     verticalLine->SetLineColor(42);
     verticalLine->SetLineWidth(2);
@@ -157,7 +164,7 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     theory->SetLineStyle(9);
 
     // Create the coloured region
-    Double_t x1[5] = {mean - sigma, mean + sigma, mean + sigma, mean - sigma, mean - sigma};
+    Double_t x1[5] = {fit_val - err_val, fit_val + err_val, fit_val + err_val, fit_val - err_val, fit_val - err_val};
     Double_t y1[5] = {graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
                       graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
                       graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()),
@@ -199,11 +206,11 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     }
 
     // Draw the Legend
-    TLegend leg(.13, .67, .43, .87, "Fit results");
+    TLegend leg(.57, .15, .87, .35, "Fit results");
     leg.SetFillColor(0);
     leg.AddEntry(graph, "Fitted points");
     leg.AddEntry(theory, Form("Theoretical value:   %.3f #pm %.3f [ns]", theory_val, err_theory), "l");
-    leg.AddEntry(verticalLine, Form("weighted average:   %.3f #pm %.3f [ns]", mean, sigma), "l");
+    leg.AddEntry(verticalLine, Form("Fit value within the full range:   %.3f #pm %.3f [ns]", fit_val, err_val), "l");
     leg.AddEntry(excl1, "1#sigma region", "f");
 
     leg.DrawClone("Same");
@@ -486,4 +493,87 @@ void noise_parameters_correlation(const char *datafile)
 
     f_chi->Draw("CONT4Z");
     c_chi->SaveAs("../figures/bifit_background_correlation.png");
+}
+
+void createFitFile(const char *datafile)
+{
+
+    // Open the data file for reading
+    std::ifstream infile(datafile);
+
+    // Create a histogram for muon lifetime
+    TH1D *histo = new TH1D("hist", "Muon lifetime", 75, 0, 16000);
+    double x;
+
+    // Open Arietta calibration parameters file
+    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+
+    // Retrieve calibration parameters
+    double a = std::stod(calibration_parameters->ValueOf("m"));
+    double b = std::stod(calibration_parameters->ValueOf("q"));
+
+    std::cout << "Fit is starting:" << std::endl;
+    std::cout << "Calibration parameters:\t"
+              << "m: " << a << "   q: " << b << std::endl;
+
+    // Fill the histogram with calibrated data
+    while (infile >> x)
+    {
+        histo->Fill(a * x + b);
+    }
+    infile.close();
+
+    // Open a file to store fit results
+    std::ofstream resultFile("./../results/fitResult.txt");
+
+    resultFile << "Range\tTau\tFit_number\tSigma\tQuantileProb" << std::endl;
+    // Loop through different fit configurations
+    for (int i = 1; i < 5; ++i)
+    {
+        // Create a fit function
+        TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 200, 15000);
+        f->SetParNames("constant", "normalization", "decay rate [ns]");
+
+        // Set fit range based on iteration
+        if (i == 1)
+        {
+            f->SetRange(200, 15000);
+        }
+        else if (i == 2)
+        {
+            f->SetRange(200, 2500);
+        }
+        else if (i == 3)
+        {
+            f->SetRange(2500, 8000);
+        }
+        else if (i == 4)
+        {
+            f->SetRange(8000, 15000);
+        }
+
+
+        // Set parameter limits and initial values
+        f->SetParLimits(0, 0, 200);
+        f->SetParameter(1, 2000);
+        f->SetParameter(2, 2200);
+
+        // Fit the function to the histogram
+        histo->Fit(f, "RMQN");
+
+        // Print fit results to the result file
+        Double_t xmin, xmax;
+        f->GetRange(xmin, xmax);
+        std::cout << "\nFitting range: " << xmin << " - " << xmax << std::endl;
+
+        resultFile << Form("%.0f-%.0f", xmin, xmax) << "\t";
+        resultFile << f->GetParameter(2) << "\t";
+        resultFile << i << "\t";
+        resultFile << f->GetParError(2) << "\t";
+        resultFile << f->GetProb() << std::endl;
+
+        // Clean up memory by deleting the fit function object
+        delete f;
+    }
+    resultFile.close();
 }
