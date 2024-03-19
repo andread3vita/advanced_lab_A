@@ -154,14 +154,26 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
     std::vector<double> result = removeIndices(converted_values, indices);
 
     TCanvas *can = new TCanvas("canvas", "Canvas", 800, 600);
-    TH1D *histogram = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 14000);
+    TH1D *hist = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 14000);
 
     for (double val : result)
     {
-        histogram->Fill(val);
+        hist->Fill(val);
     }
 
-    histogram->Draw();
+    hist->Draw();
+
+    std::ofstream outputFile("totalPrime.txt"); // Open the file for writing
+    if (outputFile.is_open())
+    {
+        for (double num : result)
+        {
+            outputFile << num << std::endl; // Write each element to the file
+        }
+        outputFile.close(); // Close the file
+        std::cout << "Output file filled successfully." << std::endl;
+    }
+
     delete calibration_parameters; // Free memory for calibration_parameters
 }
 
@@ -259,3 +271,5 @@ std::vector<double> removeIndices(const std::vector<double> &vec, const std::vec
 
     return result;
 }
+
+void
