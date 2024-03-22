@@ -1,8 +1,10 @@
 #include "../include/GrUtil.h"
+#include "../include/AnUtil.h"
 #include "TMath.h"
 #include "TROOT.h"
 #include "TStyle.h"
 #include <iostream>
+#include <string>
 
 GrUtil::GrUtil()
 {
@@ -21,23 +23,40 @@ std::string GrUtil::HLabel(const TH1D *h, std::string unita_x, std::string title
   xmax = h->GetXaxis()->GetXmax();
   xbin = h->GetXaxis()->GetNbins();
 
-  Double_t    bin_width       = (xmax - xmin) / xbin;
-  std::string temp            = std::to_string(bin_width);
-  int         count           = 0;
-  bool        first           = false;
-  int         count_interno_x = 0;
-  for (auto c : temp)
-  {
-    count_interno_x++;
-    if (c != '0' && c != '.' && !first)
-    {
-      count = count_interno_x;
-      first = true;
-    }
-  }
-  temp.resize(count + 1);
+  Double_t bin_width = (xmax - xmin) / xbin;
 
-  titolo = title + "/" + temp + " " + unita_x;
+  std::string number_as_string = "";
+  if (bin_width > 1 && bin_width <= 10)
+  {
+    double double_res = AnUtil::round_up(bin_width, 1);
+    number_as_string  = std::to_string(double_res);
+    number_as_string  = number_as_string.substr(0, number_as_string.find(".") + 3);
+  }
+  else if (bin_width > 10)
+  {
+    number_as_string = std::to_string((int)bin_width);
+  }
+  else
+  {
+    std::string temp            = std::to_string(bin_width);
+    int         count           = 0;
+    bool        first           = false;
+    int         count_interno_x = 0;
+    for (auto c : temp)
+    {
+      count_interno_x++;
+      if (c != '0' && c != '.' && !first)
+      {
+        count = count_interno_x;
+        first = true;
+      }
+    }
+    temp.resize(count + 1);
+
+    number_as_string = temp;
+  }
+
+  titolo = title + "/" + number_as_string + " " + unita_x;
   return titolo;
 }
 

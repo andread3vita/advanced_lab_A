@@ -11,6 +11,12 @@
 #include <stdexcept>
 #include <string>
 
+double AnUtil::round_up(double value, int decimal_places)
+{
+  const double multiplier = std::pow(10.0, decimal_places);
+  return std::ceil(value * multiplier) / multiplier;
+}
+
 std::string AnUtil::exec_in_terminal(std::string cmd)
 {
   // this function executes in the terminal the command in cmd and saves

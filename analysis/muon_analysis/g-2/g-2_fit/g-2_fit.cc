@@ -43,16 +43,16 @@ double c              = 299792458;                     // m/s
 double muon_mass      = (105.6583755e6) * e / (c * c); // kg
 double magnetic_filed = 5.4e-3;                        // tesla
 
-std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset_final = 0)
+std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset_final = 0, int range_xmin = -1, int range_xmax = -1, int xmin_fit = -1, int xmax_fit = -1)
 {
 
   // get all vlues from analysis without magnetic field
   StateFile input_parameters_file("./../muon_lifetime/results/results_single_fit.txt");
 
-  int    range_xmin           = std::stoi(input_parameters_file.ValueOf("range_xmin"));
-  int    range_xmax           = std::stoi(input_parameters_file.ValueOf("range_xmax"));
-  int    xmin_fit             = std::stoi(input_parameters_file.ValueOf("xmin_fit"));
-  int    xmax_fit             = std::stoi(input_parameters_file.ValueOf("xmax_fit"));
+  range_xmin                  = range_xmin == -1 ? std::stoi(input_parameters_file.ValueOf("range_xmin")) : range_xmin;
+  range_xmax                  = range_xmax == -1 ? std::stoi(input_parameters_file.ValueOf("range_xmax")) : range_xmax;
+  xmin_fit                    = xmin_fit == -1 ? std::stoi(input_parameters_file.ValueOf("xmin_fit")) : xmin_fit;
+  xmax_fit                    = xmax_fit == -1 ? std::stoi(input_parameters_file.ValueOf("xmax_fit")) : xmax_fit;
   int    total_bins           = std::stoi(input_parameters_file.ValueOf("total_bins"));
   int    total_number_events  = std::stoi(input_parameters_file.ValueOf("total_number_events"));
   int    number_fitted_events = std::stoi(input_parameters_file.ValueOf("number_fitted_events"));
@@ -123,9 +123,9 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   GrUtil::SetHTextSize(h_res);
 
   // get maximum and minimum to get a good plotting range
-  double res_max = h_res->GetMaximum();
-  double res_min = h_res->GetMinimum();
-  h_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
+  // double res_max = h_res->GetMaximum();
+  // double res_min = h_res->GetMinimum();
+  // h_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
 
   h_res->Draw();
 
@@ -208,8 +208,8 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
   h_cos_res->GetYaxis()->SetTitleOffset(1.06);
   h_cos_res->GetXaxis()->SetMaxDigits(3);
   h_cos_res->GetXaxis()->SetNdivisions(8, 4, 0, kFALSE);
-  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
-  h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
+  // h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
+  // h_cos_res->GetYaxis()->SetRangeUser(res_min * 1.6, res_max * 1.6);
   h_cos_res->Draw();
 
   c_cos->SaveAs("./g-2_fit/g-2_plot_fit.pdf");
