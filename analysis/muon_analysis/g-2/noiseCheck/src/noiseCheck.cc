@@ -27,9 +27,9 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 #include "TMultiGraph.h"
 #include <utility>
 
-#include "./../../../../include/AnUtil.h"
-#include "./../../../../include/StateFile.h"
-#include "./../../../../src/StateFile.cc"
+#include "./../../../../../include/AnUtil.h"
+#include "./../../../../../include/StateFile.h"
+#include "./../../../../../src/StateFile.cc"
 
 /*
  - windowsCheck:
@@ -39,7 +39,7 @@ std::mt19937 gen(rd()); // Mersenne Twister 19937 generator
 */
 
 //////////// MAIN FUNCTION DECLARATIONS ///////////////////
-void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.99, bool verbose = TRUE,
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.01, bool verbose = TRUE,
                   const int N = 1000000);
 
 //////////// MINOR FUNCTION DECLARATIONS ///////////////////
@@ -49,9 +49,8 @@ std::pair<double, double> MC_probability(const int N, const int window_size, con
 std::vector<double> removeIndices(const std::vector<double> &vec, const std::vector<int> &indices);
 
 //////////// FUNCTION DEFINITIONS ///////////////////
-void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.99, bool verbose = TRUE,
+void windowsCheck(const char *datafile, const int window_size, const double alpha = 0.01, bool verbose = TRUE,
                   const int N = 1000000)
-
 {
 
     // ANSI escape codes for text colors
@@ -63,7 +62,7 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
     std::ifstream infile(datafile);
 
     // Open Arietta calibration parameters file
-    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+    StateFile *calibration_parameters = new StateFile("../../../../detector/arietta/results.txt");
 
     double a = std::stod(calibration_parameters->ValueOf("m"));
     double b = std::stod(calibration_parameters->ValueOf("q"));
@@ -91,6 +90,7 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
     std::vector<int> suspecious_index_left;
     std::vector<int> suspecious_index_right;
 
+    std::vector<double> window_probabilities;
     for (size_t i = 0; i <= converted_values.size() - window_size; ++i)
     {
 
@@ -101,6 +101,8 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
             wind_indices.push_back(j);
             prob += converted_values[j];
         }
+
+        window_probabilities.push_back(prob);
 
         if (prob < CL_prob.first)
         {
@@ -134,45 +136,101 @@ void windowsCheck(const char *datafile, const int window_size, const double alph
         }
     }
 
+    int expected_outliers = (converted_values.size() - window_size) * (alpha / 2);
+
+    std::cout << "\nExpected outliers windows :" << expected_outliers << std::endl;
     std::cout << RED_TEXT << "\n\nSuspecious windows (left):" << suspect_left << RESET_COLOR << std::endl;
     std::cout << BLUE_TEXT << "Suspecious windows (right):" << suspect_right << RESET_COLOR << std::endl;
 
-    int expected_outliers = (converted_values.size() - window_size) / 2 * alpha;
+    double start = 0;
+    double end = 80e3;
+    int bins = 100;
+    TH1D *dataWin = new TH1D("", "", bins, start, end);
 
-    std::cout << expected_outliers << std::endl;
-    std::vector<int> indices;
-
-    if (suspect_left > expected_outliers)
+    double bin_size = (end-start)/bins;
+    for (double el : window_probabilities)
     {
-        indices.insert(indices.end(), suspecious_index_left.begin(), suspecious_index_left.end());
-    }
-    if (suspect_right > expected_outliers)
-    {
-        indices.insert(indices.end(), suspecious_index_right.begin(), suspecious_index_right.end());
+        dataWin->Fill(el);
     }
 
-    std::vector<double> result = removeIndices(converted_values, indices);
+    TCanvas *c_win = new TCanvas("c_win", "c_win", 800, 600);
+    dataWin->SetStats(0);
+    //c_win->SetGrid();
 
-    TCanvas *can = new TCanvas("canvas", "Canvas", 800, 600);
-    TH1D *hist = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 14000);
+    // Draw the histogram on the canvas
+    dataWin->Draw();
 
-    for (double val : result)
-    {
-        hist->Fill(val);
-    }
+    // Draw a vertical line corresponding to the upper limit
+    TLine *line = new TLine(CL_prob.first, 0, CL_prob.first, dataWin->GetMaximum());
+    TLine *line2 = new TLine(CL_prob.second, 0, CL_prob.second, dataWin->GetMaximum());
+    line->SetLineColor(kRed); // Set line color to red
+    line->Draw("same");       // Draw line on the same canvas
 
-    hist->Draw();
+    line2->SetLineColor(kRed); // Set line color to red
+    line2->Draw("same");       // Draw line on the same canvas
 
-    std::ofstream outputFile("totalPrime.txt"); // Open the file for writing
-    if (outputFile.is_open())
-    {
-        for (double num : result)
-        {
-            outputFile << num << std::endl; // Write each element to the file
-        }
-        outputFile.close(); // Close the file
-        std::cout << "Output file filled successfully." << std::endl;
-    }
+    // Add x and y labels
+    dataWin->GetXaxis()->SetTitle("pesudo-probability [ns]");
+    dataWin->GetYaxis()->SetTitle(Form("counts/(%.0f ns)",bin_size));
+
+    int Cl = (1. - alpha) * 100;
+
+    // Create a legend
+    TLegend *legend = new TLegend(0.70, 0.8, 0.87, 0.87); // Adjust the position of the legend as needed
+    legend->AddEntry(line, Form("%.0d%% CL interval", Cl), "l");
+    legend->AddEntry("", Form("Window Size: %.0d", window_size), "");
+    legend->SetFillColor(0); // Set the legend fill color to transparent
+    legend->Draw("same");
+
+    // Write the x value over the vertical lines
+    TText *text1 = new TText(CL_prob.first, dataWin->GetMaximum()+10, Form("%.2f", CL_prob.first));
+    TText *text2 = new TText(CL_prob.second, dataWin->GetMaximum()+10, Form("%.2f", CL_prob.second));
+    text1->SetTextAlign(22); // Center alignment
+    text2->SetTextAlign(22); // Center alignment
+    text1->SetTextColor(kRed); // Set text color to red
+    text2->SetTextColor(kRed); // Set text color to red
+    text1->SetTextSize(0.03);  // Set text size smaller
+    text2->SetTextSize(0.03);  // Set text size smaller
+    text1->Draw("same");
+    text2->Draw("same");
+
+    // Update the canvas
+    c_win->Update();
+    c_win->SaveAs("../figures/probWinDistribution.pdf");
+    // std::cout << expected_outliers << std::endl;
+    // std::vector<int> indices;
+
+    // if (suspect_left > expected_outliers)
+    // {
+    //     indices.insert(indices.end(), suspecious_index_left.begin(), suspecious_index_left.end());
+    // }
+    // if (suspect_right > expected_outliers)
+    // {
+    //     indices.insert(indices.end(), suspecious_index_right.begin(), suspecious_index_right.end());
+    // }
+
+    // std::vector<double> result = removeIndices(converted_values, indices);
+
+    // TCanvas *can = new TCanvas("canvas", "Canvas", 800, 600);
+    // TH1D *hist = new TH1D("histogram", "Histogram of Window Probabilities", 100, 0, 14000);
+
+    // for (double val : result)
+    // {
+    //     hist->Fill(val);
+    // }
+
+    // hist->Draw();
+
+    // std::ofstream outputFile("totalPrime.txt"); // Open the file for writing
+    // if (outputFile.is_open())
+    // {
+    //     for (double num : result)
+    //     {
+    //         outputFile << num << std::endl; // Write each element to the file
+    //     }
+    //     outputFile.close(); // Close the file
+    //     std::cout << "Output file filled successfully." << std::endl;
+    // }
 
     delete calibration_parameters; // Free memory for calibration_parameters
 }
@@ -231,7 +289,7 @@ std::pair<double, double> MC_probability(const int N, const int window_size, con
     }
 
     // Draw the histogram on the canvas
-    histogram->Draw();
+    histogram->Draw("E");
 
     // Draw a vertical line corresponding to the upper limit
     TLine *line = new TLine(limit.first, 0, limit.first, histogram->GetMaximum());
@@ -271,5 +329,3 @@ std::vector<double> removeIndices(const std::vector<double> &vec, const std::vec
 
     return result;
 }
-
-void
