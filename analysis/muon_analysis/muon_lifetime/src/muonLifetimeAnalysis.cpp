@@ -177,7 +177,7 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
 
     // Create multigraph
     TMultiGraph *multigraph = new TMultiGraph();
-    multigraph->SetTitle("Fits performed at different intervals");
+    multigraph->SetTitle("");
 
     multigraph->Add(excl1, "F");
     multigraph->Add(graph, "PE");
@@ -214,6 +214,8 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
     leg.AddEntry(excl1, "1#sigma region", "f");
 
     leg.DrawClone("Same");
+
+    c1->SaveAs("../figures/rangeFit.pdf");
 }
 
 void residualsAnalysis(const char *datafile)
@@ -462,7 +464,7 @@ void noise_parameters_correlation(const char *datafile)
     c_chi->SetLogz();
 
     TF2 *f_chi = new TF2("f_chi", chi_sqr, 0, func->GetParameter(3) + 3.2 * func->GetParError(3), 0,
-                         func->GetParameter(4) + 100 * func->GetParError(4), 3);
+                         500, 3);
 
     f_chi->SetNpx(200);
     f_chi->SetNpy(200);
@@ -489,7 +491,7 @@ void noise_parameters_correlation(const char *datafile)
     f_chi->GetXaxis()->SetTitle("bkg normalization");
     f_chi->GetYaxis()->SetTitle("bkg #tau [ns]");
     f_chi->GetZaxis()->SetTitle("#chi^{2}");
-    f_chi->SetTitle("Correlation plot of normalization parameter and #tau - background");
+    f_chi->SetTitle("");
 
     f_chi->Draw("CONT4Z");
     c_chi->SaveAs("../figures/bifit_background_correlation.png");
@@ -545,11 +547,11 @@ void createFitFile(const char *datafile)
         }
         else if (i == 3)
         {
-            f->SetRange(2500, 8000);
+            f->SetRange(2500, 9000);
         }
         else if (i == 4)
         {
-            f->SetRange(8000, 15000);
+            f->SetRange(9000, 15000);
         }
 
 
