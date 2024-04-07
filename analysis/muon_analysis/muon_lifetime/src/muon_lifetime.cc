@@ -69,7 +69,7 @@ Double_t chi_sqr(Double_t *val, Double_t *par)
   return sum;
 }
 
-void FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, int total_bins = 75)
+TF1 *FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, int total_bins = 75)
 {
   /*
   arguments explanation: filename, the path to the file that contains all the data
@@ -104,7 +104,7 @@ void FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
   f->SetParNames("constant", "normalization", "lifetime [ns]");
   f->SetParameter(2, 2200);
   f->SetParLimits(0, 0, 200);
-  h->Fit(f, "RM");
+  h->Fit(f, "RMQ");
   h->Draw("E1");
 
   // graphics
@@ -146,7 +146,7 @@ void FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
   c_chi->cd();
   c_chi->SetGrid();
   c_chi->SetLogz();
-  TF2 *f_chi = new TF2("f_chi", chi_sqr, f->GetParameter(1) - 20 * f->GetParError(1), f->GetParameter(1) + 20 * f->GetParError(1), f->GetParameter(2) - 20 * f->GetParError(2), f->GetParameter(2) + 20 * f->GetParError(2), 1);
+  TF2 *f_chi = new TF2("f_chi", chi_sqr, f->GetParameter(1) - 40 * f->GetParError(1), f->GetParameter(1) + 40 * f->GetParError(1), f->GetParameter(2) - 40 * f->GetParError(2), f->GetParameter(2) + 40 * f->GetParError(2), 1);
   f_chi->SetParameter(0, f->GetParameter(0));
   f_chi->SetNpx(100);
   f_chi->SetNpy(100);
@@ -175,5 +175,16 @@ void FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
                                               // by point. If I use png the resolution is not enought
                                               // and the overall plot looks smoother.
 
+  return f;
+}
+
+void Fit_various_intervalas(int min_left, int max_left, int step, int max_right)
+{
+  std::ofstream out("output_intervalas.txt");
+  for (int i = min_left; i <= max_left; i = i + step)
+  {
+    TF1 *res_tmp = FitData("./data/total.dat", i, max_right, 75);
+    out << i << "-" << max_right << ":\t" << res_tmp->GetParameter(2) << "\t" << res_tmp->GetParError(2) << "\t" << res_tmp->GetChisquare() / res_tmp->GetNDF() << std::endl;
+  }
   return;
 }
