@@ -42,8 +42,8 @@ Double_t f_fit(Double_t *x, Double_t *par)
 double e                    = 1.602176634e-19;               // Coulomb
 double c                    = 299792458;                     // m/s
 double muon_mass            = (105.6583755e6) * e / (c * c); // kg
-double magnetic_filed       = 5.4e-3;                        // tesla
-double magnetic_filed_error = 0.1e-3;
+double magnetic_filed       = 5.73e-3;                       // tesla
+double magnetic_filed_error = 0.02e-3;
 
 std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset_final = 0, int range_xmin = -1, int range_xmax = -1, int xmin_fit = -1, int xmax_fit = -1)
 {
