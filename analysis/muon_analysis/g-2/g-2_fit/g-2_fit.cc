@@ -39,11 +39,14 @@ Double_t f_fit(Double_t *x, Double_t *par)
 // ======= ANALYSIS FUNCTIONS ==========
 
 // physical quantities
-double e                    = 1.602176634e-19;               // Coulomb
-double c                    = 299792458;                     // m/s
-double muon_mass            = (105.6583755e6) * e / (c * c); // kg
-double magnetic_filed       = 5.73e-3;                       // tesla
-double magnetic_filed_error = 0.02e-3;
+double e         = 1.602176634e-19;               // Coulomb
+double c         = 299792458;                     // m/s
+double muon_mass = (105.6583755e6) * e / (c * c); // kg
+
+StateFile magnetic_filed_values("./../../detector/magnetic_field/magnetic_filed_value.txt");
+
+double magnetic_filed       = abs(std::stod(magnetic_filed_values.ValueOf("b_value"))) * 1e-3; // tesla, in the file is saved in mT
+double magnetic_filed_error = std::stod(magnetic_filed_values.ValueOf("b_error")) * 1e-3;      // tesla, in the file is saved in mT
 
 std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset_final = 0, int range_xmin = -1, int range_xmax = -1, int xmin_fit = -1, int xmax_fit = -1)
 {

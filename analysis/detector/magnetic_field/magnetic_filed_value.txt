@@ -1,0 +1,3 @@
+# values for the magnetic field in the range we the scintillator should be
+b_value: -5.598955321094851
+b_error: 0.13838176339524308
