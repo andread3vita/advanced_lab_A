@@ -100,8 +100,10 @@ TF1 *FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
   }
 
   // fit
+
   f = new TF1("f", "[0]+[1]*exp(-x/[2])", xmin_fit, xmax_fit);
   f->SetParNames("constant", "normalization", "lifetime [ns]");
+
   f->SetParameter(2, 2200);
   f->SetParLimits(0, 0, 200);
   h->Fit(f, "RMQ");
