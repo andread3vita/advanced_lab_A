@@ -24,8 +24,11 @@ class AnUtil
   AnUtil();
   ~AnUtil();
 
+  static double round_up(double value, int decimal_places);
+
   static TVectorD    LoadVector(const std::string &filename, size_t columnNumber);
-  static void        ProgressBarr(float progress, int present_bar, int total_bars);
+  static void        ProgressBar(float progress, std::string title, int present_bar, int total_bars, bool reduce_prints);
+  static void        ProgressBar(float progress, int present_bar, int total_bars);
   static std::string exec_in_terminal(std::string cmd);
 
   // template functions must be declared and defined in the same file

@@ -1,0 +1,21 @@
+# here we write the value obtained for the muon lifetime.
+# If a script needs it, it'll load it from here.
+
+# SCRIPT INPUT
+filename: ./data/total.dat
+xmin_fit: 200
+xmax_fit: 8000
+total_bins: 75
+range_xmin: 0
+range_xmax: 16000
+total_number_events: 37529.000000
+number_fitted_events: 37529.000000
+
+
+# FIT RESULTS
+life_time: 2377.324873
+life_time_error: 16.338920
+normalization: 3667.803518
+normalization_error: 30.943396
+constant: 0.000000
+constant_error: 1.231915

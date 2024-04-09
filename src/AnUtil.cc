@@ -5,10 +5,17 @@
 #include <array>
 #include <cstdio>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
+
+double AnUtil::round_up(double value, int decimal_places)
+{
+  const double multiplier = std::pow(10.0, decimal_places);
+  return std::ceil(value * multiplier) / multiplier;
+}
 
 std::string AnUtil::exec_in_terminal(std::string cmd)
 {
@@ -29,10 +36,30 @@ std::string AnUtil::exec_in_terminal(std::string cmd)
   return result;
 }
 
-void AnUtil::ProgressBarr(float progress, int present_bar, int total_bars)
+void AnUtil::ProgressBar(float progress, std::string title, int present_bar = 1, int total_bars = 1, bool reduce_prints = true)
 {
+  /*
+   arguments explenation: progress as a fraction, ex. 0.3 will be 30% ecc..
+                          present bar is an integer
+                          total bar is the total number of progress bars in the software
+
+   This function print on screen a progress bar like:
+
+   [1/3] title [==========               ]38%
+
+   Pay attention to the length of the bar.
+   This does not fit the current window but uses a fixed length
+   */
+
+  // to make is faster print only if the % is an integer
+  if (100 * progress - (int)(progress * 100) != 0 && reduce_prints)
+  {
+    return;
+  }
+
   int barWidth = 70;
-  std::cout << present_bar << "/" << total_bars << " [";
+  std::cout << "\rTotal (" << present_bar << "/" << total_bars << ") ";
+  std::cout << std::setw(30) << title << " [";
   int pos = barWidth * progress;
   for (int i = 0; i < barWidth; ++i)
   {
@@ -43,7 +70,9 @@ void AnUtil::ProgressBarr(float progress, int present_bar, int total_bars)
     else
       std::cout << " ";
   }
-  std::cout << "] " << int(progress * 100.0) << " %\r";
+  std::cout << "] " << int(progress * 100.0) << " %";
+  if (progress == 1)
+    std::cout << std::endl;
   std::cout.flush();
 }
 

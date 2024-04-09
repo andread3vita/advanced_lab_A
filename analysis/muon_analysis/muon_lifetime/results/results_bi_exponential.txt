@@ -1,0 +1,18 @@
+# ========= RESULTS FOR BI-EXPONENTIAL FIT ============= 
+# usefull input values
+range_xmin: 0
+range_xmax: 16000
+fit_xmin: 2000
+fit_xmax: 15000
+second_fit_xmin: 200
+total_bins: 125
+number_events: 37529.000000
+number_fitted_events: 37527.000000
+
+# results of the fit
+Const: 0.000000
+NormMuonExp: 2383.951285
+MuonLifetime: 2189.656968
+NormBkg: 121.482735
+BkgTime: 7.246518
+
