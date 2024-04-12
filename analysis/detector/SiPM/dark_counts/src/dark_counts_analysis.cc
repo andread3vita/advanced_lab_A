@@ -133,11 +133,8 @@ void DarkCountsAnalysis(int n_A, int n_B, const char *dirname = "./data/counts_A
     for (int i = 0; i < number_events; i++)
     {
       // progress bar
-      if (!(i % (number_events / 100)) || i == (number_events - 1))
-      {
-        float progress = i * 1.0 / (number_events - 1);
-        AnUtil::ProgressBarr(progress, j + 1, files_names.size());
-      }
+      float progress = i * 1.0 / (number_events - 1);
+      AnUtil::ProgressBar(progress, "processed events");
 
       TH1F *h_chA = (TH1F *)GetEvent(root_file, i, chA)->Clone("h_chA");
       delete (TH1F *)gDirectory->Get("Event Plot");
@@ -336,11 +333,8 @@ void DarkCountsVsTemperature(std::string SiPM_index, int n_A, int n_B, double th
     {
 
       // progress bar
-      if (!(i % (number_events / 100)) || i == (number_events - 1))
-      {
-        float progress = i * 1.0 / (number_events - 1);
-        AnUtil::ProgressBarr(progress, j + 1, data_files.size());
-      }
+      float progress = i * 1.0 / (number_events - 1);
+      AnUtil::ProgressBar(progress, "processed events");
 
       TH1F *h_chA = (TH1F *)GetEvent(root_file, i, chA)->Clone("h_chA");
       delete (TH1F *)gDirectory->Get("Event Plot");

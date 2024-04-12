@@ -26,5 +26,5 @@ void load()
 
   // load macros for this analysis
   gROOT->ProcessLine(".L ./src/muon_lifetime.cc");
-  gROOT->ProcessLine(".L ./src/muonLifetimeAnalysis.cpp");
+  // gROOT->ProcessLine(".L ./src/muonLifetimeAnalysis.cpp");
 }

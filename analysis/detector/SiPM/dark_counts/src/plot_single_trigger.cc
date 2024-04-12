@@ -101,7 +101,7 @@ TH1F *PlotSingleTrigger(std::string path, int i, int channel, double threshold, 
   // Grafici
   signal->SetXTitle("time [ns]");
   signal->SetYTitle("Amplitude [mV]");
-  signal->SetTitle("Single trigger event");
+  signal->SetTitle("");
   signal->Scale(-1, "nosw2");
   signal->GetXaxis()->SetLabelSize(0.05);
   signal->GetXaxis()->SetTitleSize(0.05);
@@ -111,8 +111,8 @@ TH1F *PlotSingleTrigger(std::string path, int i, int channel, double threshold, 
   signal->SetStats(false);
   signal->SetLineWidth(2);
 
-  TCanvas *c = new TCanvas("c", "c", 1000, 800);
-  c->Divide(1, 2);
+  TCanvas *c = new TCanvas("c", "c", 1500, 500);
+  c->Divide(2);
   c->cd(1);
   signal->Draw();
 
@@ -120,7 +120,7 @@ TH1F *PlotSingleTrigger(std::string path, int i, int channel, double threshold, 
   TH1F *h_smooth = SmoothHistogram(signal, n_markov);
   h_smooth->SetXTitle("time [ns]");
   h_smooth->SetYTitle("Amplitude [mV]");
-  h_smooth->SetTitle("Single trigger event after smooth algorithm");
+  h_smooth->SetTitle("");
   h_smooth->GetXaxis()->SetLabelSize(0.05);
   h_smooth->GetXaxis()->SetTitleSize(0.05);
   h_smooth->GetYaxis()->SetLabelSize(0.05);
@@ -135,8 +135,49 @@ TH1F *PlotSingleTrigger(std::string path, int i, int channel, double threshold, 
   // count numbers of peaks manually
   int n_manual = GetNPeaksManual(h_smooth, threshold, 5);
   std::cout << "detected peaks manually: " << n_manual << std::endl;
-  int n_root = GetNPeaks(h_smooth, 0.01, 3, "");
-  std::cout << "detected peaks bt root: " << n_root << std::endl;
-
+  // int n_root = GetNPeaks(h_smooth, 0.01, 3, "");
+  // std::cout << "detected peaks bt root: " << n_root << std::endl;
+  c->SaveAs("./figures/single_trigger_event_dark_counts.pdf");
   return signal;
+}
+
+void Plot2Signals(std::string path_good, std::string path_bad, int i, int channel)
+{
+  TH1F *h_good = GetEvent(TFile::Open(path_good.c_str()), i, channel);
+  TH1F *h_bad  = GetEvent(TFile::Open(path_bad.c_str()), i, channel);
+
+  TCanvas *c = new TCanvas("c", "c", 1500, 600);
+  c->Divide(2);
+  c->cd(1);
+  h_good->SetXTitle("time [ns]");
+  h_good->SetYTitle("Amplitude [mV]");
+  h_good->SetTitle("");
+  h_good->Scale(-1, "nosw2");
+  h_good->GetXaxis()->SetLabelSize(0.05);
+  h_good->GetXaxis()->SetTitleSize(0.05);
+  h_good->GetYaxis()->SetLabelSize(0.05);
+  h_good->GetYaxis()->SetTitleSize(0.05);
+  h_good->GetYaxis()->SetTitleOffset(1);
+  h_good->SetStats(false);
+  h_good->SetLineWidth(2);
+  h_good->GetXaxis()->SetRangeUser(-5000, 15000);
+  h_good->Draw();
+
+  c->cd(2);
+  h_bad->SetXTitle("time [ns]");
+  h_bad->SetYTitle("Amplitude [mV]");
+  h_bad->SetTitle("");
+  h_bad->Scale(-1, "nosw2");
+  h_bad->GetXaxis()->SetLabelSize(0.05);
+  h_bad->GetXaxis()->SetTitleSize(0.05);
+  h_bad->GetYaxis()->SetLabelSize(0.05);
+  h_bad->GetYaxis()->SetTitleSize(0.05);
+  h_bad->GetYaxis()->SetTitleOffset(1);
+  h_bad->SetStats(false);
+  h_bad->SetLineWidth(2);
+  h_bad->GetXaxis()->SetRangeUser(-5000, 15000);
+  h_bad->Draw();
+
+  c->SaveAs("./figures/2_signals.pdf");
+  return;
 }

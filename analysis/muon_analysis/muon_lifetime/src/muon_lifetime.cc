@@ -90,7 +90,7 @@ TF1 *FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
   h = new TH1D("h", "h", total_bins, range_xmin, range_xmax);
   h->GetXaxis()->SetTitle("time [ns]");
   h->GetYaxis()->SetTitle(GrUtil::HLabel(h, "ns").c_str());
-  h->SetTitle("Fit muon lifetime");
+  h->SetTitle("");
   std::ifstream input(filename.c_str());
   float         value;
   while (input >> value)
@@ -155,7 +155,7 @@ TF1 *FitData(std::string filename, int xmin_fit = 2000, int xmax_fit = 16000, in
   f_chi->GetXaxis()->SetTitle("normalization parameter");
   f_chi->GetYaxis()->SetTitle("#tau [ns]");
   f_chi->GetZaxis()->SetTitle("#chi^{2}");
-  f_chi->SetTitle("Correlation plot of normalization parameter and #tau");
+  f_chi->SetTitle("");
 
   f_chi->GetXaxis()->SetLabelSize(0.047);
   f_chi->GetXaxis()->SetLabelOffset(0.015);

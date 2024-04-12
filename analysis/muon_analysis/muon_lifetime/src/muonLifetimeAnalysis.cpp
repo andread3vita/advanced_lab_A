@@ -26,9 +26,8 @@ using std::string;
 #include "TPaveStats.h"
 
 #include "./../../../../include/AnUtil.h"
+#include "./../../../../include/GrUtil.h"
 #include "./../../../../include/StateFile.h"
-#include "./../../../../src/GrUtil.cc"
-#include "./../../../../src/StateFile.cc"
 
 TH1D *h;
 TF1  *func;
