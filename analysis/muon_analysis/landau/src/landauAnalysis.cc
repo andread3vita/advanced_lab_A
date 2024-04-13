@@ -62,7 +62,7 @@ void landauSummaryFile(const char *folderPath)
 
     // Open a file to store fit results
     std::ofstream resultFile("./../results/landauResult.txt");
-    resultFile << "SIPM\tConstant\tNormalization\tmean\tsigma\tErrConst\tErrNorm\tErrMean\tErrSigma\tQuantileProb"
+    resultFile << "SIPM\tConstant\tNormalization\tmode\tsigma\tErrConst\tErrNorm\tErrMode\tErrSigma\tQuantileProb"
                << std::endl;
 
     // Iterate through files in the specified directory
@@ -94,15 +94,15 @@ void landauSummaryFile(const char *folderPath)
         TF1 *flippedLandauFit = new TF1("flippedLandauFit", "[3]+landau(-x)", -600, 0);
 
         // Set parameter names for the fit function
-        flippedLandauFit->SetParNames("normalization", "mean", "sigma", "constant");
+        flippedLandauFit->SetParNames("normalization", "MPV", "sigma", "constant");
 
         // Set initial parameter values for the fit
-        flippedLandauFit->SetParameter(0, 1000); // Amplitude
+        flippedLandauFit->SetParameter(0, 1300); // Amplitude
         flippedLandauFit->SetParameter(1, 100);  // Mean
-        flippedLandauFit->SetParameter(2, 2);    // Sigma
+        flippedLandauFit->SetParameter(2, 40);   // Sigma
 
         // Set limits for the constant parameter
-        flippedLandauFit->SetParLimits(3, 0, 10000);
+        flippedLandauFit->SetParLimits(3, 0, 20);
 
         // Fit the histogram with the flipped Landau function using the RM option
         histo->Fit("flippedLandauFit", "RMNQ");
@@ -221,25 +221,130 @@ TH1F *ReadTree(const char *fileName, bool negative, int channel = chB, Long64_t 
     return (spectrumMaximum);
 }
 
+struct Vavilov_Func
+{
+    Vavilov_Func()
+    {
+    }
+
+    double operator()(const double *x, const double *p)
+    {
+        double kappa = p[0];
+        double beta2 = p[1];
+        return p[4] * (pdf.Pdf(-(x[0] - p[2]) / p[3], kappa, beta2));
+    }
+
+    // double mode()(const double *p)
+    // {
+    //     double kappa = p[0];
+    //     double beta2 = p[1];
+    //     return pdf.Mode(kappa,beta2);
+    // }
+
+    ROOT::Math::VavilovAccurate pdf;
+};
+
 void landauFit(const char *fileName, int numBins)
+{
+    TCanvas *can = new TCanvas();
+    // Read data from a tree and create a histogram
+    TH1F *histo = ReadTree(fileName, "chB", TRUE, -1, numBins);
+
+    histo->SetTitle("");
+    // Create a flipped Landau function to fit the histogram
+
+    Vavilov_Func *func = new Vavilov_Func();
+    TF1 *flippedLandauFit = new TF1("flippedLandauFit", func, -600, 5, 5, "Vavilov_Func");
+
+    flippedLandauFit->SetParameters(0.3, 0.05, -70, 20, histo->GetEntries());
+    flippedLandauFit->SetParLimits(1, 0, 1);
+    flippedLandauFit->SetParLimits(0, 0.001, 10);
+
+    // Fit the histogram with the flipped Landau function using the RM option
+    histo->Fit("flippedLandauFit", "RML");
+    TFitResultPtr r = histo->Fit(flippedLandauFit, "SRML");
+    TMatrixDSym cov = r->GetCovarianceMatrix();
+
+    // Add x and y labels
+    histo->GetXaxis()->SetTitle("Signal peak [mV]");
+    histo->GetYaxis()->SetTitle(Form("Counts / %.0d mV", (750) / numBins));
+
+    ROOT::Math::VavilovAccurate f1;
+    double_t lambda_max = f1.Mode(flippedLandauFit->GetParameter(0), flippedLandauFit->GetParameter(1));
+
+    Double_t mostProbableValue = flippedLandauFit->GetMaximumX();
+    Double_t errorMode =
+        sqrt(pow(lambda_max * flippedLandauFit->GetParError(3), 2) + pow(flippedLandauFit->GetParError(2), 2));
+
+    Double_t euler = 0.5772156649;
+    Double_t meanValue_temp =
+        euler - 1 - std::log(flippedLandauFit->GetParameter(0)) - flippedLandauFit->GetParameter(1);
+
+    Double_t meanValue = -meanValue_temp * flippedLandauFit->GetParameter(3) + flippedLandauFit->GetParameter(2);
+
+    // error propagation
+    Double_t err_tmp =
+        sqrt((cov(0, 1) + cov(1, 0)) / flippedLandauFit->GetParameter(0) +
+             (cov(0, 0)) / (flippedLandauFit->GetParameter(0) * flippedLandauFit->GetParameter(0)) + (cov(1, 1)));
+
+    Double_t errorMean =
+        sqrt(pow(meanValue_temp * flippedLandauFit->GetParError(3), 2) + pow(flippedLandauFit->GetParError(2), 2) +
+             pow(err_tmp * flippedLandauFit->GetParameter(3), 2));
+
+    // Create a TLine for mean value
+    TLine *meanLine = new TLine(meanValue, 0, meanValue, flippedLandauFit->Eval(meanValue));
+    meanLine->SetLineColor(kBlue);
+    meanLine->SetLineWidth(2);
+    meanLine->SetLineStyle(2);
+
+    // Create a TLine for most probable value
+    TLine *mostProbableLine =
+        new TLine(mostProbableValue, 0, mostProbableValue, flippedLandauFit->Eval(mostProbableValue));
+    mostProbableLine->SetLineColor(kRed);
+    mostProbableLine->SetLineWidth(2);
+    mostProbableLine->SetLineStyle(2);
+
+    // Create a legend
+    TLegend *legend = new TLegend(0.15, 0.7, 0.4, 0.85);
+    legend->AddEntry(histo, "Data", "l");
+    legend->AddEntry(flippedLandauFit, "Landau distribution (fit)", "l");
+    legend->AddEntry(meanLine, Form("Mean: %.3f #pm %.3f", meanValue, errorMean), "l");
+    legend->AddEntry(mostProbableLine, Form("Mode: %.3f #pm %.3f", mostProbableValue, errorMode), "l");
+
+    gStyle->SetOptStat(0);
+
+    // // Draw histogram with fit function
+    histo->Draw("E1");
+    flippedLandauFit->Draw("same");
+
+    // Draw vertical lines
+    meanLine->Draw("same");
+    mostProbableLine->Draw("same");
+
+    // Draw legend
+    legend->Draw("same");
+
+    string outputName = fileName;
+    outputName.erase(outputName.length() - 5);
+    size_t pos = outputName.find("landau");
+    outputName.erase(0, pos);
+
+    outputName += ".pdf";
+    outputName = "../figures/" + outputName;
+    can->SaveAs(outputName.c_str());
+
+    delete flippedLandauFit;
+    delete can;
+}
+
+void efficiency_calc(const char *fileName, int numBins, double threshold)
 {
     // Read data from a tree and create a histogram
     TH1F *histo = ReadTree(fileName, "chB", TRUE, -1, numBins);
 
-    // Create a flipped Landau function to fit the histogram
-    TF1 *flippedLandauFit = new TF1("flippedLandauFit", "[3]+landau(-x)", -600, 0);
+    double norm = histo->Integral(0, histo->GetNbinsX());
+    double integral = histo->Integral(0, histo->FindFixBin(threshold));
 
-    // Set parameter names for the fit function
-    flippedLandauFit->SetParNames("normalization", "mean", "sigma", "constant");
-
-    // Set initial parameter values for the fit
-    flippedLandauFit->SetParameter(0, 1000); // Amplitude
-    flippedLandauFit->SetParameter(1, 60);   // Mean
-    flippedLandauFit->SetParameter(2, 20);   // Sigma
-
-    // Set limits for the constant parameter
-    flippedLandauFit->SetParLimits(3, 0, 10000);
-
-    // Fit the histogram with the flipped Landau function using the RM option
-    histo->Fit("flippedLandauFit", "RM");
+    std::cout << "Filename: " << fileName << "\nNorm: " << norm << "\nthreshold: " << threshold << " mV"
+              << "\nEfficiency: " << integral / norm * 100 << " %" << std::endl;
 }
