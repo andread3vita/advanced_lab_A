@@ -15,19 +15,18 @@ using std::string;
 // root libraries
 #include "TCanvas.h"
 #include "TF1.h"
-#include "TF2.h"
 #include "TGraph.h"
 #include "TGraphErrors.h"
 #include "TH1D.h"
 #include "TLegend.h"
-#include "TLine.h"
 #include "TMath.h"
 #include "TMultiGraph.h"
 #include "TPaveStats.h"
 
 #include "./../../../../include/AnUtil.h"
-#include "./../../../../include/GrUtil.h"
 #include "./../../../../include/StateFile.h"
+#include "./../../../../src/GrUtil.cc"
+#include "./../../../../src/StateFile.cc"
 
 TH1D *h;
 TF1 *func;
@@ -99,109 +98,126 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
         chi.push_back(c);
         ndf.push_back(dof);
     }
-}
 
-// Convert std::vectors to arrays
-double *x_arr = const_cast<double *>(val.data());
-double *y_arr = const_cast<double *>(pos.data());
-double *err_x_arr = const_cast<double *>(err.data());
+    // Close the file
+    infile.close();
 
-////////////////
-// STATISTICS //
-////////////////
+    double fit_val = 0.;
+    double err_val = 0.;
+    // Print all values
+    for (size_t i = 0; i < val.size(); ++i)
+    {
+        std::cout << "range: " << range[i] << "\t"
+                  << "tau: " << val[i] << "\t"
+                  << "sigma: " << err[i] << std::endl;
+        if (i == 0)
+        {
+            fit_val = val[i];
+            err_val = err[i];
+        }
+    }
 
-// // Compute mean and sigma
-// double mean = 0;
-// double norm = 0;
+    // Convert std::vectors to arrays
+    double *x_arr = const_cast<double *>(val.data());
+    double *y_arr = const_cast<double *>(pos.data());
+    double *err_x_arr = const_cast<double *>(err.data());
 
-// for (int i = 0; i < val.size(); ++i)
-// {
-//     mean += x_arr[i] / pow(err_x_arr[i], 2);
-//     norm += pow(1.0 / err_x_arr[i], 2);
-// }
+    ////////////////
+    // STATISTICS //
+    ////////////////
 
-// mean = mean / norm;
-// double sigma = pow(norm, -0.5);
+    // // Compute mean and sigma
+    // double mean = 0;
+    // double norm = 0;
 
-//////////////
-// GRAPHICS //
-//////////////
+    // for (int i = 0; i < val.size(); ++i)
+    // {
+    //     mean += x_arr[i] / pow(err_x_arr[i], 2);
+    //     norm += pow(1.0 / err_x_arr[i], 2);
+    // }
 
-// Create TGraphErrors
-auto *c1 = new TCanvas("c1", "c1", 1200, 600);
-c1->SetGrid();
+    // mean = mean / norm;
+    // double sigma = pow(norm, -0.5);
 
-TGraphErrors *graph = new TGraphErrors(val.size(), x_arr, y_arr, err_x_arr);
-graph->SetMarkerStyle(kFullSquare);
+    //////////////
+    // GRAPHICS //
+    //////////////
 
-// Create a vertical line with a coloured region
-TLine *verticalLine = new TLine(fit_val, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), fit_val,
-                                graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()));
-verticalLine->SetLineColor(42);
-verticalLine->SetLineWidth(2);
+    // Create TGraphErrors
+    auto *c1 = new TCanvas("c1", "c1", 1200, 600);
+    c1->SetGrid();
 
-// Create a vertical line with a coloured region
-double theory_val = 2196.9811;
-double err_theory = 0.0022;
-TLine *theory = new TLine(theory_val, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), theory_val,
-                          graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()));
-theory->SetLineColor(kRed);
-theory->SetLineWidth(2);
-theory->SetLineStyle(9);
+    TGraphErrors *graph = new TGraphErrors(val.size(), x_arr, y_arr, err_x_arr);
+    graph->SetMarkerStyle(kFullSquare);
 
-// Create the coloured region
-Double_t x1[5] = {fit_val - err_val, fit_val + err_val, fit_val + err_val, fit_val - err_val, fit_val - err_val};
-Double_t y1[5] = {graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
-                  graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
-                  graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()),
-                  graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()),
-                  graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst())};
+    // Create a vertical line with a coloured region
+    TLine *verticalLine = new TLine(fit_val, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), fit_val,
+                                    graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()));
+    verticalLine->SetLineColor(42);
+    verticalLine->SetLineWidth(2);
 
-auto excl1 = new TGraph(5, x1, y1);
-excl1->SetFillColorAlpha(41, 0.5);
-excl1->SetFillStyle(1001);
+    // Create a vertical line with a coloured region
+    double theory_val = 2196.9811;
+    double err_theory = 0.0022;
+    TLine *theory = new TLine(theory_val, graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()), theory_val,
+                              graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()));
+    theory->SetLineColor(kRed);
+    theory->SetLineWidth(2);
+    theory->SetLineStyle(9);
 
-// Create multigraph
-TMultiGraph *multigraph = new TMultiGraph();
-multigraph->SetTitle("");
+    // Create the coloured region
+    Double_t x1[5] = {fit_val - err_val, fit_val + err_val, fit_val + err_val, fit_val - err_val, fit_val - err_val};
+    Double_t y1[5] = {graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
+                      graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst()),
+                      graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()),
+                      graph->GetYaxis()->GetBinUpEdge(graph->GetYaxis()->GetLast()),
+                      graph->GetYaxis()->GetBinLowEdge(graph->GetYaxis()->GetFirst())};
 
-multigraph->Add(excl1, "F");
-multigraph->Add(graph, "PE");
+    auto excl1 = new TGraph(5, x1, y1);
+    excl1->SetFillColorAlpha(41, 0.5);
+    excl1->SetFillStyle(1001);
 
-multigraph->GetXaxis()->SetTitle("#tau (ns)");
+    // Create multigraph
+    TMultiGraph *multigraph = new TMultiGraph();
+    multigraph->SetTitle("");
 
-// Hide the tick labels on the TAxis
-multigraph->GetYaxis()->SetLabelSize(0);
-multigraph->GetYaxis()->SetTickLength(0);
+    multigraph->Add(excl1, "F");
+    multigraph->Add(graph, "PE");
 
-multigraph->Draw("A*");
+    multigraph->GetXaxis()->SetTitle("#tau (ns)");
 
-verticalLine->Draw("same");
-theory->Draw("same");
+    // Hide the tick labels on the TAxis
+    multigraph->GetYaxis()->SetLabelSize(0);
+    multigraph->GetYaxis()->SetTickLength(0);
 
-// Draw text near each point
-for (int i = 0; i < val.size(); ++i)
-{
-    // Adjust the position and content of the text as needed
-    double textX = x_arr[i];
-    double textY = y_arr[i] + 0.1; // Offset from the point
+    multigraph->Draw("A*");
 
-    TText *text = new TText(textX, textY, range[i].c_str());
-    text->SetTextSize(0.035);
-    text->Draw();
-}
+    verticalLine->Draw("same");
+    theory->Draw("same");
 
-// Draw the Legend
-TLegend leg(.57, .15, .87, .35, "Fit results");
-leg.SetFillColor(0);
-leg.AddEntry(graph, "Fitted points");
-leg.AddEntry(theory, Form("Theoretical value:   %.3f #pm %.3f [ns]", theory_val, err_theory), "l");
-leg.AddEntry(verticalLine, Form("Fit value within the full range:   %.3f #pm %.3f [ns]", fit_val, err_val), "l");
-leg.AddEntry(excl1, "1#sigma region", "f");
+    // Draw text near each point
+    for (int i = 0; i < val.size(); ++i)
+    {
+        // Adjust the position and content of the text as needed
+        double textX = x_arr[i];
+        double textY = y_arr[i] + 0.1; // Offset from the point
 
-leg.DrawClone("Same");
+        TText *text = new TText(textX, textY, range[i].c_str());
+        text->SetTextSize(0.035);
+        text->Draw();
+    }
 
-c1->SaveAs("../figures/rangeFit.pdf");
+    // Draw the Legend
+    TLegend leg(.57, .15, .87, .35, "Fit results");
+    leg.SetFillColor(0);
+    leg.AddEntry(graph, "Fitted points");
+    leg.AddEntry(theory, Form("Theoretical value:   %.3f #pm %.3f [ns]", theory_val, err_theory), "l");
+    leg.AddEntry(verticalLine, Form("Fit value within the full range:   %.3f #pm %.3f [ns]", fit_val, err_val), "l");
+    leg.AddEntry(excl1, "1#sigma region", "f");
+
+    leg.DrawClone("Same");
+
+    c1->SaveAs("../figures/rangeFit.pdf");
 }
 
 void residualsAnalysis(const char *datafile)
@@ -283,16 +299,11 @@ void residualsAnalysis(const char *datafile)
 // Function for bi-exponential fit
 void biExponentialFit(const char *datafile)
 {
-    // input values for the analysis
-    int range_xmin = 0;
-    int range_xmax = 16000;
-    int fit_xmin = 2000;
-    int second_fit_xmin = 200;
-    int fit_xmax = 15000;
-    int total_bins = 125;
-
     // Open Arietta calibration parameters file
-    StateFile *calibration_parameters = new StateFile("./../../detector/arietta/results.txt");
+    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+
+    // Open data file
+    std::ifstream infile(datafile);
 
     // Initialize ROOT canvas
     auto *c1 = new TCanvas();
@@ -305,23 +316,11 @@ void biExponentialFit(const char *datafile)
     int nbins = 75;
     TH1D *histo = new TH1D("", "", nbins, xmin, xmax);
 
-    // Open data file
-    std::ifstream infile(datafile);
-
-    // Create a histogram for muon lifetime
-    TH1D *histo = new TH1D("hist", "Muon lifetime", total_bins, range_xmin, range_xmax);
-
     // Read calibration parameters
     double x;
     double a = std::stod(calibration_parameters->ValueOf("m"));
     double b = std::stod(calibration_parameters->ValueOf("q"));
 
-    // Define and fit a single exponential function in the range [2000, 15000]
-    TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 15000);
-    f->SetParNames("constant", "normalization", "decay rate [ns]");
-    f->SetParLimits(0, 0, 2000);
-    f->SetParameter(2, 2200);
-    histo->Fit(f, "RMN");
     // Fill the histogram using the calibrated values
     while (infile >> x)
     {
@@ -330,14 +329,14 @@ void biExponentialFit(const char *datafile)
     infile.close();
 
     // Define and fit a single exponential function in the range [2000, 15000]
-    TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", fit_xmin, fit_xmax);
+    TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 2000, 15000);
     f->SetParNames("constant", "normalization", "decay rate [ns]");
-    f->SetParLimits(0, 0, 200);
+    f->SetParLimits(0, 0, 2000);
     f->SetParameter(2, 2200);
     histo->Fit(f, "RMN");
 
     // Define a combined function with fixed and free parameters for the second fit
-    TF1 *combF = new TF1("combF", "[0]+[1]*exp(-x/[2])+[3]*exp(-x/[4])", second_fit_xmin, fit_xmax);
+    TF1 *combF = new TF1("combF", "[0]+[1]*exp(-x/[2])+[3]*exp(-x/[4])", 200, 15000);
 
     combF->SetParName(0, "Const");
     combF->SetParName(1, "NormMuonExp");
@@ -345,20 +344,23 @@ void biExponentialFit(const char *datafile)
     combF->SetParName(3, "NormBkg");
     combF->SetParName(4, "BkgTime [ns]");
 
+    combF->SetParameter(1, f->GetParameter(1));
+    combF->FixParameter(2, f->GetParameter(2));
+
     // Set limits and initial values for background parameters
     combF->SetParLimits(0, 0, 2500);
     combF->SetParLimits(3, 0, 2500);
     combF->SetParameter(4, 1000);
+
+    // // Fit the histogram with the combined function
+    histo->Fit(combF, "RM");
+    // gStyle->SetOptFit(01111);
 
     // Set x and y-axis titles
     histo->GetXaxis()->SetTitle("time [ns]");
 
     std::string ylabel = "counts / (" + std::to_string((xmax - xmin) / nbins) + " ns)";
     histo->GetYaxis()->SetTitle(ylabel.c_str());
-
-    // Set x and y-axis titles
-    histo->GetXaxis()->SetTitle("time [ns]");
-    histo->GetYaxis()->SetTitle(GrUtil::HLabel(histo, "ns").c_str());
 
     GrUtil::SetHTextSize(histo);
     GrUtil::SetCountDigits(histo);
@@ -533,163 +535,142 @@ void createFitFile(const char *datafile)
     // Open a file to store fit results
     std::ofstream resultFile("./../results/fitResult.txt");
 
-    resultFile << "Range\tTau\tFit_number\tSigma\tQuantileProb" << std::endl;
+    resultFile << "Fit_number\tRange\tTau\tSigma\tNorm\tChi2\tnDOF" << std::endl;
     // Loop through different fit configurations
-    for (int i = 1; i < 10; ++i)
+    for (int i = 1; i < 5; ++i)
     {
         // Create a fit function
-        TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 1000, 15000);
+        TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 200, 15000);
         f->SetParNames("constant", "normalization", "decay rate [ns]");
 
         // Set fit range based on iteration
-        if (i < 5)
+        if (i == 1)
         {
-            f->SetRange(15000 - 3700 * i, 15000);
+            f->SetRange(200, 15000);
         }
-        infile.close();
-
-        // Open a file to store fit results
-        std::ofstream resultFile("./../results/fitResult.txt");
-
-        resultFile << "Fit_number\tRange\tTau\tSigma\tNorm\tChi2\tnDOF" << std::endl;
-        // Loop through different fit configurations
-        for (int i = 1; i < 5; ++i)
+        else if (i == 2)
         {
-            // Create a fit function
-            TF1 *f = new TF1("f", "[0]+[1]*exp(-x/[2])", 200, 15000);
-            f->SetParNames("constant", "normalization", "decay rate [ns]");
-
-            // Set fit range based on iteration
-            if (i == 1)
-            {
-                f->SetRange(200, 15000);
-            }
-            else if (i == 2)
-            {
-                f->SetRange(200, 2000);
-            }
-            else if (i == 3)
-            {
-                f->SetRange(2000, 3700);
-            }
-            else if (i == 4)
-            {
-                f->SetRange(3700, 15000);
-            }
-
-            // Set parameter limits and initial values
-            f->SetParLimits(0, 0, 200);
-            f->SetParameter(1, 2000);
-            f->SetParameter(2, 2200);
-
-            // Fit the function to the histogram
-            histo->Fit(f, "RMQN");
-
-            // Print fit results to the result file
-            Double_t xmin, xmax;
-            f->GetRange(xmin, xmax);
-            std::cout << "\nFitting range: " << xmin << " - " << xmax << std::endl;
-
-            // Fit the function to the histogram
-            histo->Fit(f, "RML");
-
-            resultFile << i << "\t";
-            resultFile << Form("%.0f-%.0f", xmin, xmax) << "\t";
-            resultFile << f->GetParameter(2) << "\t";
-            resultFile << f->GetParError(2) << "\t";
-            resultFile << f->GetParameter(1) << "\t";
-            resultFile << f->GetChisquare() << "\t";
-            resultFile << f->GetNDF() << std::endl;
-
-            std::cout << "_________________________________\n\n" << std::endl;
-            // Clean up memory by deleting the fit function object
-            delete f;
+            f->SetRange(200, 2000);
         }
-        resultFile.close();
+        else if (i == 3)
+        {
+            f->SetRange(2000, 3700);
+        }
+        else if (i == 4)
+        {
+            f->SetRange(3700, 15000);
+        }
+
+        // Set parameter limits and initial values
+        f->SetParLimits(0, 0, 200);
+        f->SetParameter(1, 2000);
+        f->SetParameter(2, 2200);
+
+        // Print fit results to the result file
+        Double_t xmin, xmax;
+        f->GetRange(xmin, xmax);
+        std::cout << "\nFitting range: " << xmin << " - " << xmax << std::endl;
+
+        // Fit the function to the histogram
+        histo->Fit(f, "RML");
+
+        resultFile << i << "\t";
+        resultFile << Form("%.0f-%.0f", xmin, xmax) << "\t";
+        resultFile << f->GetParameter(2) << "\t";
+        resultFile << f->GetParError(2) << "\t";
+        resultFile << f->GetParameter(1) << "\t";
+        resultFile << f->GetChisquare() << "\t";
+        resultFile << f->GetNDF() << std::endl;
+
+        std::cout << "_________________________________\n\n" << std::endl;
+        // Clean up memory by deleting the fit function object
+        delete f;
     }
+    resultFile.close();
+}
 
-    Double_t myFunction(Double_t * x, Double_t * params)
+Double_t myFunction(Double_t *x, Double_t *params)
+{
+    Double_t c = params[0];
+    Double_t n = params[1];
+    Double_t tau = params[2];
+    return c + n * exp(-x[0] / tau);
+}
+
+void test(const char *datafile, const int nbins, const int init, const int middle)
+{
+    // Open Arietta calibration parameters file
+    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+
+    // Open data file
+    std::ifstream infile(datafile);
+
+    // Initialize ROOT canvas
+    auto *c1 = new TCanvas();
+    c1->SetGrid();
+
+    // Create a histogram for muon lifetime
+
+    int xmin = 0;
+    int xmax = 16000;
+    TH1D *histo = new TH1D("title", "title", nbins, xmin, xmax);
+
+    // Read calibration parameters
+    double x;
+    double a = std::stod(calibration_parameters->ValueOf("m"));
+    double b = std::stod(calibration_parameters->ValueOf("q"));
+
+    // Fill the histogram using the calibrated values
+    while (infile >> x)
     {
-        Double_t c = params[0];
-        Double_t n = params[1];
-        Double_t tau = params[2];
-        return c + n * exp(-x[0] / tau);
+        histo->Fill(a * x + b);
     }
+    infile.close();
 
-    void test(const char *datafile, const int nbins, const int init, const int middle)
-    {
-        // Open Arietta calibration parameters file
-        StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+    // Define the function
+    TF1 *fitFunc1 = new TF1("fitFunc", myFunction, init, middle, 3); // assuming range [0, 10]
+    TF1 *fitFunc2 = new TF1("fitFunc", myFunction, middle, 9000, 3); // assuming range [0, 10]
+    TF1 *fitFunc3 = new TF1("fitFunc", myFunction, init, 9000, 3);   // assuming range [0, 10]
 
-        // Open data file
-        std::ifstream infile(datafile);
+    fitFunc1->SetParameter(0, 20);
+    fitFunc1->SetParameter(1, 2500);
+    fitFunc1->SetParameter(2, 2194);
 
-        // Initialize ROOT canvas
-        auto *c1 = new TCanvas();
-        c1->SetGrid();
+    fitFunc2->SetParameter(0, 20);
+    fitFunc2->SetParameter(1, 2500);
+    fitFunc2->SetParameter(2, 2194);
 
-        // Create a histogram for muon lifetime
+    fitFunc3->SetParameter(0, 20);
+    fitFunc3->SetParameter(1, 2500);
+    fitFunc3->SetParameter(2, 2194);
 
-        int xmin = 0;
-        int xmax = 16000;
-        TH1D *histo = new TH1D("title", "title", nbins, xmin, xmax);
+    fitFunc1->SetParLimits(0, 0, 100);
+    fitFunc2->SetParLimits(0, 0, 100);
+    fitFunc3->SetParLimits(0, 0, 100);
 
-        // Read calibration parameters
-        double x;
-        double a = std::stod(calibration_parameters->ValueOf("m"));
-        double b = std::stod(calibration_parameters->ValueOf("q"));
+    // fitFunc->SetParNames("c", "n", "tau");
+    histo->Fit(fitFunc1, "RMLN");
+    histo->Fit(fitFunc2, "RMLN");
+    histo->Fit(fitFunc3, "RMLN");
 
-        // Fill the histogram using the calibrated values
-        while (infile >> x)
-        {
-            histo->Fill(a * x + b);
-        }
-        infile.close();
+    // Set x and y-axis titles
+    histo->GetXaxis()->SetTitle("time [ns]");
 
-        // Define the function
-        TF1 *fitFunc1 = new TF1("fitFunc", myFunction, init, middle, 3); // assuming range [0, 10]
-        TF1 *fitFunc2 = new TF1("fitFunc", myFunction, middle, 9000, 3); // assuming range [0, 10]
-        TF1 *fitFunc3 = new TF1("fitFunc", myFunction, init, 9000, 3);   // assuming range [0, 10]
+    std::string ylabel = "counts / (" + std::to_string((xmax - xmin) / nbins) + " ns)";
+    histo->GetYaxis()->SetTitle(ylabel.c_str());
 
-        fitFunc1->SetParameter(0, 20);
-        fitFunc1->SetParameter(1, 2500);
-        fitFunc1->SetParameter(2, 2194);
+    // fitFunc1->SetRange(0,15000);
+    //  // Draw histogram
+    histo->Draw("E1");
+    fitFunc1->SetLineColor(kRed);
+    fitFunc1->Draw("same");
 
-        fitFunc2->SetParameter(0, 20);
-        fitFunc2->SetParameter(1, 2500);
-        fitFunc2->SetParameter(2, 2194);
+    fitFunc2->SetLineColor(kBlue);
+    fitFunc2->Draw("same");
 
-        fitFunc3->SetParameter(0, 20);
-        fitFunc3->SetParameter(1, 2500);
-        fitFunc3->SetParameter(2, 2194);
-
-        fitFunc1->SetParLimits(0, 0, 100);
-        fitFunc2->SetParLimits(0, 0, 100);
-        fitFunc3->SetParLimits(0, 0, 100);
-
-        // fitFunc->SetParNames("c", "n", "tau");
-        histo->Fit(fitFunc1, "RMLN");
-        histo->Fit(fitFunc2, "RMLN");
-        histo->Fit(fitFunc3, "RMLN");
-
-        // Set x and y-axis titles
-        histo->GetXaxis()->SetTitle("time [ns]");
-
-        std::string ylabel = "counts / (" + std::to_string((xmax - xmin) / nbins) + " ns)";
-        histo->GetYaxis()->SetTitle(ylabel.c_str());
-
-        // fitFunc1->SetRange(0,15000);
-        //  // Draw histogram
-        histo->Draw("E1");
-        fitFunc1->SetLineColor(kRed);
-        fitFunc1->Draw("same");
-
-        fitFunc2->SetLineColor(kBlue);
-        fitFunc2->Draw("same");
-
-        fitFunc3->SetLineColor(kGreen);
-        fitFunc3->Draw("same");
-        // gStyle->SetOptFit(01111);
-        gStyle->SetOptFit(1);
-        gPad->SetLogy();
-    }
+    fitFunc3->SetLineColor(kGreen);
+    fitFunc3->Draw("same");
+    // gStyle->SetOptFit(01111);
+    gStyle->SetOptFit(1);
+    gPad->SetLogy();
+}
