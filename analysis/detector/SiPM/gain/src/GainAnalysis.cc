@@ -49,7 +49,7 @@ namespace fs = std::filesystem;
 
 //////////// FUNCTION DECLARATIONS ///////////////////
 float adc_to_mv(int16_t raw, int16_t rangeIndex, int16_t maxADCValue);
-TH1F *ReadTree(const char *fileName, bool negative, int channel = chB, Long64_t nEvtMax = -1);
+TH1F *ReadTree(const char *fileName, bool negative, int channel = chA, Long64_t nEvtMax = -1);
 void fitGain(const char *dirpath, const char *txt_file, int n_expected_peaks = 3, int fit_width = 7);
 
 //////////// MAIN FUNCTION DEFINITION ///////////////////
@@ -177,7 +177,7 @@ float adc_to_mv(int16_t raw, int16_t rangeIndex, int16_t maxADCValue)
     return (raw * inputRanges[rangeIndex]) * 1. / maxADCValue;
 }
 
-TH1F *ReadTree(const char *fileName, bool negative, int channel = chB, Long64_t nEvtMax = -1)
+TH1F *ReadTree(const char *fileName, bool negative, int channel = chA, Long64_t nEvtMax = -1)
 {
     // struct declaration
     InfoAcq::chSettings chSet1;
@@ -248,7 +248,12 @@ TH1F *ReadTree(const char *fileName, bool negative, int channel = chB, Long64_t 
     // adc_to_mv(sampSet.max_adc_value,chSet.range,sampSet.max_adc_value) ;
     float xmin = -100;
     float xmax = 0;
-    TH1F *spectrumMaximum = new TH1F("hMax", "Maxima Distribution Spectrum", 200, xmin, xmax);
+    TH1F *spectrumMaximum = new TH1F("hMax", "", 200, xmin, xmax);
+    spectrumMaximum->GetXaxis()->SetTitle("Signal peak [mV]");
+    spectrumMaximum->GetYaxis()->SetTitle(Form("counts / %.1f mV", (xmax - xmin) / 200));
+
+    gStyle->SetOptStat(0);
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     //	TH1F* spectrumMaximum = new TH1F( "hMax", "Maximum Spectrum", 256,
     // xmin,xmax );
