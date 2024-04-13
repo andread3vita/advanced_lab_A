@@ -81,20 +81,22 @@ void summaryPlot(const char *resultFile = "../results/fitResult.txt")
 
     // Define vectors for each column
     std::vector<string> range;
-    std::vector<double> val, pos, err, prob;
+    std::vector<double> val, pos, err, norm,chi,ndf;
 
     // Read the file line by line and fill the vectors
-    double x, y, z, p;
+    double x, y, z, nor, c, dof;
     string r, columnNames;
     getline(infile, columnNames); // Read and discard column names
-    while (infile >> r >> x >> y >> z >> p)
+    while (infile >> y >> r >> x >> z >> nor >> c >> dof)
     {
-
-        range.push_back(r);
         val.push_back(x);
+        range.push_back(r);
         pos.push_back(y);
         err.push_back(z);
-        prob.push_back(p);
+
+        norm.push_back(nor);
+        chi.push_back(c);
+        ndf.push_back(dof);
     }
 
     // Close the file
@@ -308,7 +310,11 @@ void biExponentialFit(const char *datafile)
     c1->SetGrid();
 
     // Create a histogram for muon lifetime
-    TH1D *histo = new TH1D("", "", 75, 0, 16000);
+
+    int xmin = 0;
+    int xmax = 16000;
+    int nbins = 75;
+    TH1D *histo = new TH1D("", "", nbins, xmin, xmax);
 
     // Read calibration parameters
     double x;
@@ -352,7 +358,9 @@ void biExponentialFit(const char *datafile)
 
     // Set x and y-axis titles
     histo->GetXaxis()->SetTitle("time [ns]");
-    histo->GetYaxis()->SetTitle(GrUtil::HLabel(histo, "ns").c_str());
+
+    std::string ylabel = "counts / (" + std::to_string((xmax - xmin) / nbins) + " ns)";
+    histo->GetYaxis()->SetTitle(ylabel.c_str());
 
     GrUtil::SetHTextSize(histo);
     GrUtil::SetCountDigits(histo);
@@ -504,7 +512,7 @@ void createFitFile(const char *datafile)
     std::ifstream infile(datafile);
 
     // Create a histogram for muon lifetime
-    TH1D *histo = new TH1D("hist", "Muon lifetime", 75, 0, 16000);
+    TH1D *histo = new TH1D("hist", "Muon lifetime", 80, 0, 16000);
     double x;
 
     // Open Arietta calibration parameters file
@@ -528,7 +536,7 @@ void createFitFile(const char *datafile)
     // Open a file to store fit results
     std::ofstream resultFile("./../results/fitResult.txt");
 
-    resultFile << "Range\tTau\tFit_number\tSigma\tQuantileProb" << std::endl;
+    resultFile << "Fit_number\tRange\tTau\tSigma\tNorm\tChi2\tnDOF" << std::endl;
     // Loop through different fit configurations
     for (int i = 1; i < 5; ++i)
     {
@@ -543,15 +551,15 @@ void createFitFile(const char *datafile)
         }
         else if (i == 2)
         {
-            f->SetRange(200, 2500);
+            f->SetRange(200, 2000);
         }
         else if (i == 3)
         {
-            f->SetRange(2500, 9000);
+            f->SetRange(2000, 3700);
         }
         else if (i == 4)
         {
-            f->SetRange(9000, 15000);
+            f->SetRange(3700, 15000);
         }
 
 
@@ -560,22 +568,111 @@ void createFitFile(const char *datafile)
         f->SetParameter(1, 2000);
         f->SetParameter(2, 2200);
 
-        // Fit the function to the histogram
-        histo->Fit(f, "RMQN");
-
         // Print fit results to the result file
         Double_t xmin, xmax;
         f->GetRange(xmin, xmax);
         std::cout << "\nFitting range: " << xmin << " - " << xmax << std::endl;
 
+        // Fit the function to the histogram
+        histo->Fit(f, "RML");
+
+        resultFile << i << "\t";
         resultFile << Form("%.0f-%.0f", xmin, xmax) << "\t";
         resultFile << f->GetParameter(2) << "\t";
-        resultFile << i << "\t";
         resultFile << f->GetParError(2) << "\t";
-        resultFile << f->GetProb() << std::endl;
+        resultFile << f->GetParameter(1) << "\t";
+        resultFile << f->GetChisquare() << "\t";
+        resultFile << f->GetNDF() << std::endl;
 
+        std::cout <<"_________________________________\n\n" << std::endl;
         // Clean up memory by deleting the fit function object
         delete f;
     }
     resultFile.close();
+}
+
+Double_t myFunction(Double_t *x, Double_t *params)
+{
+    Double_t c = params[0];
+    Double_t n = params[1];
+    Double_t tau = params[2];
+    return c + n * exp(-x[0] / tau);
+}
+
+void test(const char *datafile, const int nbins, const int init, const int middle)
+{
+    // Open Arietta calibration parameters file
+    StateFile *calibration_parameters = new StateFile("../../../detector/arietta/results.txt");
+
+    // Open data file
+    std::ifstream infile(datafile);
+
+    // Initialize ROOT canvas
+    auto *c1 = new TCanvas();
+    c1->SetGrid();
+
+    // Create a histogram for muon lifetime
+
+    int xmin = 0;
+    int xmax = 16000;
+    TH1D *histo = new TH1D("title", "title", nbins, xmin, xmax);
+
+    // Read calibration parameters
+    double x;
+    double a = std::stod(calibration_parameters->ValueOf("m"));
+    double b = std::stod(calibration_parameters->ValueOf("q"));
+
+    // Fill the histogram using the calibrated values
+    while (infile >> x)
+    {
+        histo->Fill(a * x + b);
+    }
+    infile.close();
+
+    // Define the function
+    TF1 *fitFunc1 = new TF1("fitFunc", myFunction, init, middle, 3); // assuming range [0, 10]
+    TF1 *fitFunc2 = new TF1("fitFunc", myFunction, middle, 9000, 3); // assuming range [0, 10]
+    TF1 *fitFunc3 = new TF1("fitFunc", myFunction, init, 9000, 3);   // assuming range [0, 10]
+
+    fitFunc1->SetParameter(0, 20);
+    fitFunc1->SetParameter(1, 2500);
+    fitFunc1->SetParameter(2, 2194);
+
+    fitFunc2->SetParameter(0, 20);
+    fitFunc2->SetParameter(1, 2500);
+    fitFunc2->SetParameter(2, 2194);
+
+    fitFunc3->SetParameter(0, 20);
+    fitFunc3->SetParameter(1, 2500);
+    fitFunc3->SetParameter(2, 2194);
+
+    fitFunc1->SetParLimits(0,0, 100);
+    fitFunc2->SetParLimits(0, 0, 100);
+    fitFunc3->SetParLimits(0, 0, 100);
+
+    // fitFunc->SetParNames("c", "n", "tau");
+    histo->Fit(fitFunc1, "RMLN");
+    histo->Fit(fitFunc2, "RMLN");
+    histo->Fit(fitFunc3, "RMLN");
+
+    // Set x and y-axis titles
+    histo->GetXaxis()->SetTitle("time [ns]");
+
+    std::string ylabel = "counts / (" + std::to_string((xmax - xmin) / nbins) + " ns)";
+    histo->GetYaxis()->SetTitle(ylabel.c_str());
+
+    //fitFunc1->SetRange(0,15000);
+    // // Draw histogram
+    histo->Draw("E1");
+    fitFunc1->SetLineColor(kRed);
+    fitFunc1->Draw("same");
+
+    fitFunc2->SetLineColor(kBlue);
+    fitFunc2->Draw("same");
+
+    fitFunc3->SetLineColor(kGreen);
+    fitFunc3->Draw("same");
+    //gStyle->SetOptFit(01111);
+    gStyle->SetOptFit(1);
+    gPad->SetLogy();
 }
