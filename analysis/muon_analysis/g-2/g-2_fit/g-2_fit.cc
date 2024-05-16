@@ -128,6 +128,8 @@ std::string G2_estimation(int bin_number_B, int dataset_initial = 0, int dataset
     f_cos->SetParameter(4, 0);
 
     f_cos->FixParameter(5, life_time);
+    std::cout << "FIXING LIFETIME AT: " << life_time << std::endl;
+
     // f_cos->FixParameter(5, 2195);
 
     h_cos->Fit(f_cos, "LMR");
